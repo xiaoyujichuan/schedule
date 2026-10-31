@@ -1,0 +1,3712 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MedSchedule · 医学生智能课表</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231e6fff'/%3E%3Cpath d='M7 3v3M17 3v3M4 9h16' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M12 12v6M9 15h6' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E">
+<style>
+:root{
+  --primary:#1e6fff; --primary-soft:#e8f0ff;
+  --bg:#f4f6fb; --card:#fff; --text:#16202c; --muted:#6b7a8d; --line:#e4e9f2;
+  --lab:#0aa39a; --clinic:#7c5cff; --elective:#f59e0b;
+  --radius:14px; --shadow:0 2px 12px rgba(22,32,44,.07);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--text);padding-bottom:80px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+.topbar{position:sticky;top:0;z-index:30;background:rgba(244,246,251,.9);
+  backdrop-filter:blur(14px);border-bottom:1px solid var(--line);padding:14px 16px 12px;
+  display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.topbar h1{margin:0;font-size:19px;letter-spacing:-.3px}
+.topbar h1 span{color:var(--primary)}
+.sub{font-size:12px;color:var(--muted);margin-top:3px}
+.icon-btn{background:var(--card);border:1px solid var(--line);border-radius:10px;width:36px;height:36px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);
+  flex:0 0 auto;transition:color .15s,border-color .15s}
+.icon-btn:hover{color:var(--primary);border-color:var(--primary)}
+.tabs{display:flex;gap:8px;padding:12px 16px 0;overflow-x:auto}
+.tab{flex:0 0 auto;padding:8px 14px;border-radius:20px;border:1px solid var(--line);
+  background:var(--card);font-size:13px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tab.on{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:600}
+main{padding:14px 16px}
+.panel{display:none}.panel.on{display:block}
+
+/* 周导航 */
+.weeknav{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.weeknav .wk-box{flex:1;min-width:0;text-align:center}
+.weeknav .wk-box b{font-size:15px;letter-spacing:-.2px}
+.weeknav .wk-box span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.navbtn{width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--card);
+  font-size:18px;color:var(--text);cursor:pointer;line-height:1;flex:0 0 auto}
+.navbtn:disabled{opacity:.35;cursor:not-allowed}
+.wk-pick{position:relative;flex:0 0 auto}
+.wk-trigger{appearance:none;display:flex;align-items:center;gap:6px;
+  font-size:15px;font-weight:700;padding:9px 16px;border:1.5px solid #cdddf6;
+  border-radius:999px;background:linear-gradient(180deg,#ffffff,#eef5ff);
+  color:#2a5db8;cursor:pointer;margin:0;line-height:1;box-shadow:0 3px 8px rgba(30,111,255,.10),inset 0 1px 0 rgba(255,255,255,.9);
+  transition:border-color .2s,box-shadow .2s,transform .15s}
+.wk-trigger:hover{border-color:#6d9df0;box-shadow:0 4px 12px rgba(30,111,255,.16)}
+.wk-trigger:focus{outline:none;border-color:#3d7bff;
+  box-shadow:0 0 0 3px rgba(61,123,255,.18),0 4px 12px rgba(30,111,255,.14)}
+.wk-trigger:active{transform:scale(.97)}
+.wk-trigger svg{transition:transform .2s;color:#7ba3e8}
+.wk-pick.open .wk-trigger svg{transform:rotate(180deg)}
+.wk-menu{position:absolute;top:calc(100% + 8px);left:0;z-index:50;min-width:132px;
+  max-height:280px;overflow-y:auto;padding:6px;border:1px solid #dbe7fa;border-radius:14px;
+  background:rgba(255,255,255,.98);backdrop-filter:blur(8px);
+  box-shadow:0 10px 26px rgba(30,80,180,.16),0 2px 6px rgba(30,80,180,.08)}
+.wk-menu .wk-it{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:8px 12px;border-radius:9px;font-size:13.5px;font-weight:600;color:#35507a;
+  cursor:pointer;transition:background .15s,color .15s;white-space:nowrap}
+.wk-menu .wk-it:hover{background:#eef5ff;color:#1e6fff}
+.wk-menu .wk-it.cur{background:linear-gradient(135deg,#3d7bff,#5b9bff);color:#fff;font-weight:700}
+.wk-menu .wk-it .wk-dot{width:16px;height:16px;flex:0 0 auto;display:none}
+.wk-menu .wk-it.cur .wk-dot{display:inline-block}
+.wk-menu .wk-it:not(.cur){padding-right:20px}
+button.sm{padding:8px 12px;font-size:12.5px;border-radius:10px}
+
+/* 本周统计 */
+.stats{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.st{flex:1;min-width:96px;background:var(--card);border:1px solid var(--line);border-radius:12px;
+  padding:9px 10px;text-align:center}
+.st b{display:block;font-size:17px;color:var(--primary);line-height:1.25}
+.st span{font-size:11px;color:var(--muted)}
+.st-warn{border-color:#f0c27a;background:#fff4e0}
+.st-warn b{color:#d35400}
+.examtip{margin-bottom:12px;border-left:4px solid #8e4ec6;background:#faf5ff;border-radius:10px;
+  padding:10px 14px;font-size:12.5px;line-height:1.55;color:#425}
+.examtip .ex-head{font-size:13.5px;font-weight:700;margin-bottom:4px}
+.examtip .ex-sub{font-size:12px;color:#6a5c78;margin-top:2px}
+.examtip .ex-day{display:flex;align-items:flex-start;gap:6px;margin-top:8px}
+.examtip .ex-dn{flex:0 0 2.2em;font-weight:700;font-size:12px;padding-top:2px}
+.examtip .ex-it{display:inline-block;background:#eee2fa;border-radius:6px;padding:2px 7px;
+  font-size:11.5px;margin:0 4px 4px 0;color:#4a2a63}
+.examtip .ex-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;padding:7px 9px;
+  background:#fff;border:1px solid #ece3f6;border-radius:8px}
+.examtip .ex-row select,.examtip .ex-row input{font-size:12px;border:1px solid #d9cfeb;border-radius:6px;
+  padding:3px 5px;background:#fff;color:#333;height:26px;box-sizing:border-box}
+.examtip .ex-row select{width:56px}
+.examtip .ex-row input[type=time]{width:80px}
+.examtip .ex-row input.ex-nm{flex:1;min-width:110px}
+.examtip .ex-del{color:#c0392b;font-size:13px;font-weight:700;cursor:pointer;padding:2px 6px;user-select:none}
+.examtip .ex-bar{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.examtip .ex-bar .btn{flex:1;min-width:96px}
+.examtip .ex-head2{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:700;margin-bottom:4px}
+.examtip .ex-btn{font-size:11.5px;padding:3px 9px;border-radius:7px;cursor:pointer;border:1px solid #d9cfeb;
+  background:#fff;color:#4a2a63;margin-left:auto;flex:0 0 auto}
+.examtip.ex-warn{border-left-color:#e67e22;background:#fff8ec;color:#6b4a12}
+.examtip.ex-warn .ex-head,.examtip.ex-warn .ex-head2{color:#d35400}
+.examtip.ex-warn .ex-sub{color:#9a6b1f}
+
+.weekwrap{overflow-x:auto;padding-bottom:8px}
+.week{display:grid;grid-template-columns:44px repeat(7,minmax(94px,1fr));gap:6px;min-width:740px}
+.dhead{height:38px;font-size:12px;font-weight:600;text-align:center;color:var(--muted);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.dhead .dn{font-size:12px;font-weight:600}
+.dhead .dd{font-size:10px;font-weight:400;color:#a8b3c2}
+.dhead .dot{font-style:normal;font-size:9px;font-weight:700;background:var(--primary);color:#fff;
+  border-radius:8px;padding:1px 6px}
+.dhead.today .dn{color:var(--primary)}
+.dhead.weekend .dn{color:#9a86c9}
+.dbody{position:relative;background:var(--card);border:1px solid var(--line);border-radius:10px}
+.dbody.today-col{background:#eef5ff;border-color:#c9ddff}
+.tick{position:absolute;left:0;right:0;height:0;border-top:1px dashed #eef1f6;font-size:10px;
+  color:#a8b3c2;padding-right:4px;text-align:right;transform:translateY(-6px)}
+.ev{position:absolute;left:3px;right:3px;border-radius:8px;padding:5px 6px;overflow:hidden;
+  font-size:10.5px;line-height:1.3;border-left:3px solid var(--primary);background:var(--primary-soft);
+  color:#123;cursor:pointer;transition:box-shadow .15s,transform .15s}
+.ev:hover{box-shadow:0 4px 12px rgba(22,32,44,.16);z-index:5;transform:translateY(-1px)}
+.ev.lab{background:#e5f8f6;border-left-color:var(--lab)}
+.ev.clinic{background:#f0ecff;border-left-color:var(--clinic)}
+.ev.elective{background:#fff7e6;border-left-color:var(--elective)}
+.ev b{display:block;font-size:10px;opacity:.65;font-weight:600}
+.ev .nm{font-weight:600;font-size:11px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+.ev .lc{opacity:.7;font-size:10px}
+.ev .cr{float:right;font-size:9px;font-weight:700;background:transparent;color:#9a4b00;
+  margin-left:4px;line-height:1.5}
+.ev .tc{color:#000;opacity:.88}
+.card{background:var(--card);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;
+  box-shadow:var(--shadow);border:1px solid var(--line)}
+.card h3{margin:0 0 8px;font-size:14px}
+.conf{border-left:4px solid var(--primary);border-radius:10px;padding:12px 14px;margin-bottom:10px;
+  background:var(--card);box-shadow:var(--shadow)}
+.conf.hard{border-left-color:#e5484d;background:#fff5f5}
+.conf.travel{border-left-color:#f76b15;background:#fff8f2}
+.conf.load{border-left-color:#f5a524;background:#fffbf0}
+.conf.exam{border-left-color:#8e4ec6;background:#faf5ff}
+.conf.todo{border-left-color:#e5484d;background:#fff5f5}
+.conf.custom{border-left-color:#3b82f6;background:#f2f7ff}
+.conf{position:relative;cursor:pointer;transition:transform .1s}
+.conf-x{position:absolute;top:8px;right:10px;width:20px;height:20px;line-height:18px;text-align:center;
+  border-radius:50%;color:var(--muted);font-size:12px;cursor:pointer;background:rgba(0,0,0,.05);user-select:none}
+.conf-x:hover{background:rgba(0,0,0,.12);color:#333}
+.hi-item{display:flex;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid var(--line);font-size:13px}
+.hi-item .btn-mini{margin-left:auto;flex:0 0 auto}
+.conf:active{transform:scale(.99)}
+.conf-g{margin-bottom:12px}
+.conf-gh{display:flex;align-items:center;gap:7px;padding:9px 12px;border-radius:10px;background:var(--card);
+  border:1px solid var(--line);cursor:pointer;font-weight:700;font-size:13px;box-shadow:var(--shadow)}
+.conf-gh .n{color:var(--muted);font-weight:600;font-size:11.5px;background:#eef2f8;border-radius:20px;padding:1px 8px}
+.conf-gh .ar{margin-left:auto;font-size:10px;color:var(--muted)}
+.conf-body{padding-top:9px}
+.conf.today{border-left-width:6px;box-shadow:0 0 0 1px rgba(30,111,255,.28)}
+.badge-today{display:inline-block;font-size:10px;padding:1px 7px;border-radius:20px;background:#1e6fff;color:#fff;margin-right:6px;vertical-align:1px}
+.conf-tools{display:flex;gap:8px;margin-bottom:12px}
+.conf-tools .btn-mini{font-size:11.5px;padding:5px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);cursor:pointer;color:var(--muted)}
+.conf .t{font-weight:600;font-size:13.5px;margin-bottom:5px}
+.conf .d{font-size:12.5px;color:#425;line-height:1.55}
+.conf .s{font-size:12.5px;color:#0a7a5a;margin-top:6px;line-height:1.55}
+.tag{display:inline-block;font-size:10.5px;padding:2px 7px;border-radius:20px;
+  background:#eef2f8;color:var(--muted);margin-right:6px;vertical-align:1px}
+.rev{margin-bottom:14px}
+.rev .date{font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:8px}
+.rev.rev-thiswk{border:1.5px solid #1e6fff;border-radius:12px;padding:10px 12px;
+  background:linear-gradient(90deg,#f0f6ff,#f8faff);box-shadow:0 1px 4px rgba(30,111,255,.08)}
+.rev.rev-thiswk .date{color:#1e6fff}
+.rev-head{font-size:12.5px;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.rev-head .rev-head-btns{display:flex;gap:2px;flex:0 0 auto}
+.rev-head .btn-mini{background:transparent;border:none;color:var(--muted);font-size:12px;padding:2px 7px;cursor:pointer;border-radius:6px;transition:color .15s,background .15s}
+.rev-head .btn-mini:hover{color:var(--primary);background:rgba(30,111,255,.08)}
+.item{background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:8px;
+  box-shadow:var(--shadow);border:1px solid var(--line);cursor:pointer;transition:border-color .15s}
+.item:hover{border-color:var(--primary)}
+.item.done{opacity:.62}
+.item.done .h b{text-decoration:line-through}
+.item .h{display:flex;justify-content:space-between;font-size:13px}
+.item .m{font-size:11.5px;color:var(--muted);margin-top:4px}
+.rv-status{font-size:11px;color:var(--muted);margin-top:6px;font-weight:600}
+.rv-status.done{color:#0a9d5a}
+.rv-node{cursor:pointer;display:block;padding:6px 8px;border-radius:8px;background:rgba(120,140,180,.06);margin-top:5px;transition:background .15s}
+.rv-node:hover{background:rgba(30,111,255,.1)}
+.rv-node.done{background:rgba(10,157,90,.08)}
+.rv-node.done:hover{background:rgba(10,157,90,.14)}
+.rv-node-t{font-size:11px;color:#33466b;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.rv-node.done .rv-node-t{text-decoration:none;color:#2f9e6d}
+.rv-node .nd-pct{display:inline-block;margin-left:8px;font-size:10px;font-weight:600;color:var(--muted);background:rgba(120,140,180,.14);border-radius:10px;padding:1px 7px;flex-shrink:0}
+.rv-node.done .nd-pct{color:#0a9d5a;background:rgba(10,157,90,.12)}
+.rv-node .rv-media{margin-top:5px;justify-content:flex-start}
+.rv-node .thumb-s{width:36px;height:36px}
+.item .h .cnt{display:inline-block;margin-left:7px;font-size:9.5px;font-weight:600;color:var(--primary);background:rgba(30,111,255,.1);border-radius:20px;padding:1px 8px;vertical-align:2px}
+.rv-media{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+.rv-media .thumbs{display:flex;gap:6px;flex-wrap:wrap}
+.rv-media .thumb{width:52px;height:52px;border-radius:8px;object-fit:cover;border:1px solid var(--line);cursor:pointer}
+.rv-media .thumb:hover{border-color:var(--primary)}
+.rv-media .btn-mini{font-size:11.5px;padding:5px 10px;border-radius:8px;border:1px dashed var(--primary);
+  color:var(--primary);background:transparent;cursor:pointer}
+.rv-media .btn-mini:hover{background:var(--primary);color:#fff}
+.daily-add{display:flex;gap:8px;align-items:center}
+.daily-add input{flex:1;margin-bottom:0}
+.daily-add .btn{margin-bottom:0;white-space:nowrap}
+.daily-item{display:flex;align-items:center;gap:8px;padding:8px 2px;border-bottom:1px dashed var(--line)}
+.daily-item .dt{flex:1;font-size:13.5px}
+.daily-item.done .dt{text-decoration:line-through;color:var(--muted);opacity:.7}
+.daily-item .dl{display:flex;align-items:center}
+.daily-item input[type=checkbox]{width:18px;height:18px;margin:0;accent-color:var(--primary);cursor:pointer}
+.btn.mini{padding:3px 8px;font-size:11px;margin:0;border-radius:6px}
+.sheet.cel-card{background:linear-gradient(135deg,#1e6fff,#7c4dff);color:#fff;text-align:center;
+  padding:32px 26px;border-radius:18px;position:relative;overflow:hidden}
+.cel-emoji{font-size:56px;line-height:1.2;animation:celBounce .7s ease}
+@keyframes celBounce{0%{transform:scale(.4)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+.cel-txt{font-size:17px;font-weight:700;margin-top:14px;letter-spacing:.5px}
+.cel-sub{font-size:13px;opacity:.92;margin-top:8px}
+.cel-gain{display:inline-block;margin-top:12px;padding:6px 14px;border-radius:20px;
+  background:rgba(255,255,255,.24);font-size:13px;font-weight:700}
+.cel-star{position:absolute;font-size:16px;opacity:0;animation:celFloat 1.6s ease forwards}
+@keyframes celFloat{0%{opacity:0;transform:translateY(6px) scale(.6)}
+  30%{opacity:1}100%{opacity:0;transform:translateY(-46px) scale(1.15)}}
+#photoModal img{width:100%;border-radius:10px;max-height:64vh;object-fit:contain}
+.bar{height:4px;border-radius:4px;background:#eef1f6;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:4px;background:var(--primary)}
+.big{background:linear-gradient(135deg,#1e6fff,#4a8dff);color:#fff;border-radius:16px;
+  padding:20px;box-shadow:0 6px 20px rgba(30,111,255,.25)}
+.big .k{font-size:12px;opacity:.85}
+.big .v{font-size:22px;font-weight:700;margin:6px 0}
+.big .w{font-size:13px;line-height:1.65;opacity:.95}
+.big .wx-now{display:flex;align-items:center;gap:6px;flex-wrap:wrap;
+  background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);
+  border-radius:10px;padding:7px 10px;margin-top:8px;font-size:13px}
+.big .wx-now span{font-weight:600}
+.big .wx-now b{font-size:15px;color:#fff}
+button.btn{background:var(--primary);color:#fff;border:0;border-radius:10px;padding:10px 16px;
+  font-size:14px;font-weight:600;cursor:pointer}
+button.ghost{background:var(--card);color:var(--text);border:1px solid var(--line)}
+button.danger{color:#e5484d;border-color:#f3c8c8}
+.fab{position:fixed;right:16px;bottom:20px;z-index:40;border-radius:26px;padding:13px 20px;
+  box-shadow:0 6px 18px rgba(30,111,255,.35)}
+.modal{position:fixed;inset:0;background:rgba(12,20,30,.45);z-index:50;display:none;
+  align-items:flex-end;justify-content:center}
+.modal.on{display:flex}
+.sheet{background:var(--card);width:100%;max-width:560px;border-radius:18px 18px 0 0;
+  padding:18px;max-height:86vh;overflow:auto}
+.sheet h2{margin:0 0 4px;font-size:16px}
+textarea,input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;
+  font-size:13px;font-family:inherit;margin-bottom:10px;background:#fbfcfe}
+textarea{min-height:120px;resize:vertical}
+#cNote{min-height:56px;font-size:13px;line-height:1.5}
+.hint{font-size:11.5px;color:var(--muted);line-height:1.6;margin-bottom:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
+.empty{text-align:center;color:var(--muted);font-size:13px;padding:28px 0}
+
+/* 图片扫描导入 */
+.drop{border:1.5px dashed var(--line);border-radius:12px;padding:20px 14px;text-align:center;
+  color:var(--muted);font-size:13px;cursor:pointer;background:#fbfcfe;margin-bottom:12px}
+.drop.over{border-color:var(--primary);background:var(--primary-soft)}
+.drop small{display:block;font-size:11px;margin-top:6px;opacity:.85}
+#imgPrev{width:100%;border-radius:10px;margin-bottom:10px;max-height:260px;object-fit:contain;
+  background:#f4f6fb}
+
+/* 课程详情 */
+.c-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.c-head h2{flex:1 1 100%;margin-bottom:2px}
+.c-row{display:flex;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line);font-size:13px}
+.c-row span{color:var(--muted);flex:0 0 44px}
+.c-row b{flex:1;line-height:1.55;font-weight:600}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%) translateY(10px);
+  background:rgba(22,32,44,.92);color:#fff;font-size:13px;padding:10px 18px;border-radius:12px;
+  opacity:0;pointer-events:none;transition:all .25s;z-index:99}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* 上课提醒横幅 */
+.remind-bar{background:linear-gradient(90deg,#f0f6ff,#e4edfb);border:1px solid #d2e2f7;
+  border-radius:12px;padding:10px 14px;margin:0 0 12px;display:flex;align-items:center;
+  gap:10px;flex-wrap:wrap;font-size:13px}
+.remind-bar span{color:#274a7d}
+.remind-bar b{color:#1e6fff}
+.remind-bar select{appearance:none;-webkit-appearance:none;-moz-appearance:none;
+  width:auto;padding:6px 30px 6px 12px;margin:0;font-size:13px;font-weight:700;color:#1e6fff;
+  border:1.5px solid #c9d8f2;border-radius:999px;background:
+  url('data:image/svg+xml;utf8,%3Csvg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="%231e6fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"%3E%3Cpath d="M6 9l6 6 6-6"/%3E%3C/svg%3E') no-repeat right 10px center,
+    #ffffff;
+  box-shadow:0 1px 3px rgba(30,111,255,.10);cursor:pointer;
+  transition:border-color .2s,box-shadow .2s}
+.remind-bar select:hover{border-color:#6d9df0}
+.remind-bar select:focus{outline:none;border-color:#3d7bff;
+  box-shadow:0 0 0 3px rgba(61,123,255,.15)}
+.remind-bar select option{background:#ffffff;color:#1e6fff;font-weight:600}
+.remind-bar .btn{margin:0;padding:7px 16px}
+.remind-bar .rb-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rain-banner{background:linear-gradient(90deg,#f0f6ff,#e4edfb);border:1px solid #d2e2f7;
+  border-radius:12px;padding:9px 12px;margin:0 0 12px;display:flex;align-items:center;
+  gap:10px;font-size:13px;color:#274a7d}
+.rain-banner .rb-x{margin-left:auto;border:none;background:rgba(0,0,0,.05);color:#274a7d;
+  width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1;flex:0 0 auto}
+.rain-banner .rb-x:hover{background:rgba(0,0,0,.12)}
+
+@media (max-width:520px){
+  .stats .st{min-width:calc(50% - 4px)}
+  .dhead .dn{font-size:11px}
+  input,select,textarea{font-size:16px}
+}
+/* 每日单词提问 */
+.fg-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.fg-it{display:flex;align-items:center;gap:6px;font-size:12.5px;color:#35507a;background:var(--card);border:1px solid var(--line);border-radius:9px;padding:7px 9px;cursor:pointer;transition:border-color .15s,background .15s}
+.fg-it:hover{border-color:#6d9df0}
+.fg-it input{width:15px;height:15px;margin:0;accent-color:var(--primary)}
+.wd-level{display:flex;gap:8px;margin-top:10px}
+.wd-level .wd-lv{flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:#35507a;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.wd-level .wd-lv:hover{border-color:#6d9df0;color:#1e6fff}
+.wd-level .wd-lv.on{background:linear-gradient(135deg,#3d7bff,#5b9bff);border-color:#3d7bff;color:#fff}
+.wd-head{display:flex;justify-content:space-between;align-items:center;margin-top:4px;flex-wrap:wrap;gap:4px}
+.wd-refresh{padding:5px 13px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:#35507a;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.wd-refresh:hover{border-color:#6d9df0;color:#1e6fff}
+.wd-refresh.on{border-color:#3d7bff;color:#1e6fff;background:#eef5ff}
+.rv-it{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-top:6px;font-size:13px;line-height:1.5}
+.rv-it b{flex:0 0 auto;color:var(--text)}
+.rv-it i{color:var(--muted);font-style:normal;flex:1;min-width:0}
+.rv-it span{color:#35507a;text-align:right;flex:0 0 auto;max-width:44%}
+.gr-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:14px}
+.gr-box{margin-top:8px;background:#f6f9ff;border:1px solid #e3ecff;border-radius:12px;padding:13px 15px}
+.gr-title{font-size:15.5px;font-weight:700;color:var(--text);margin:0 0 6px}
+.gr-desc{font-size:13px;color:#35507a;line-height:1.65;margin:0 0 9px}
+.gr-ex{font-size:14px;color:#1e6fff;line-height:1.6;background:#fff;border:1px dashed #bcd3ff;border-radius:10px;padding:9px 12px}
+.gr-cn{font-size:13px;color:#35507a;line-height:1.6;margin-top:7px;padding:7px 12px;background:#eef4ff;border-radius:9px}
+.dl-rm{flex:0 0 auto;font-size:11px;font-weight:600;color:#d97706;background:#fff4e0;border:1px solid #f5d99a;border-radius:999px;padding:2px 9px;white-space:nowrap}
+.wd-set{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--muted)}
+.wd-set .wd-n,.an-set .an-n{padding:6px 14px;border:1px solid var(--line);border-radius:999px;background:var(--card);color:#35507a;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.wd-set .wd-n:hover,.an-set .an-n:hover{border-color:#6d9df0;color:#1e6fff}
+.wd-set .wd-n.on,.an-set .an-n.on{background:linear-gradient(135deg,#3d7bff,#5b9bff);border-color:#3d7bff;color:#fff}
+.an-set{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--muted)}
+.wd-progress{height:8px;border-radius:99px;background:var(--line);margin-top:12px;overflow:hidden}
+.wd-bar{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#3d7bff,#5b9bff);transition:width .3s}
+.wd-item{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-top:8px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.wd-item:hover{border-color:#6d9df0}
+.wd-item.show{border-color:#3d7bff;box-shadow:0 2px 8px rgba(61,123,255,.12)}
+.wd-item.done{background:linear-gradient(135deg,#eafaf1,#f0fbf5);border-color:#7dd3a0}
+.wd-item .wd-en{flex:1;min-width:0}
+.wd-item .wd-en b{font-size:16px;color:var(--text);letter-spacing:.3px}
+.wd-item .wd-en i{display:block;font-size:11px;color:var(--muted);font-style:normal;margin-top:1px}
+.wd-item .wd-meaning{flex:0 0 auto;max-width:46%;text-align:right;font-size:12.5px;color:#35507a;line-height:1.5;opacity:.45;transition:opacity .2s;filter:blur(3px);user-select:none}
+.wd-item.show .wd-meaning{opacity:1;filter:none;user-select:auto}
+.wd-item.done .wd-meaning{opacity:1;filter:none}
+.wd-item .wd-btn{flex:0 0 auto;padding:6px 12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:#35507a;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.wd-item .wd-btn:hover{background:#eef5ff;color:#1e6fff}
+.wd-item.done .wd-btn{background:#3dd68c;border-color:#3dd68c;color:#fff}
+.map-scroll{max-height:430px;overflow-y:auto;border-radius:14px;background:#eef3fb}
+.mapimg-wrap{position:relative}
+.mapimg-wrap img{width:100%;display:block}
+.mapmark-layer{position:absolute;inset:0;pointer-events:none}
+.map-empty{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:13px;font-weight:600;color:#33466b;background:rgba(255,255,255,.88);padding:9px 16px;border-radius:12px;box-shadow:0 2px 10px rgba(20,40,80,.14)}
+.pmark{position:absolute;transform:translate(-50%,-50%);text-align:center;line-height:1}
+.pmark i{display:inline-block;width:15px;height:15px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 1px 5px rgba(0,0,0,.4)}
+.pmark b{display:block;margin-top:4px;font-size:9.5px;font-weight:600;color:#fff;background:rgba(23,32,52,.72);padding:1px 6px;border-radius:8px;white-space:nowrap;letter-spacing:.2px}
+.pmark.hot i{width:19px;height:19px;border-width:3px}
+.pmark.hot em{display:block;position:absolute;left:50%;top:8px;width:19px;height:19px;margin:-9px 0 0 -9.5px;border-radius:50%;background:rgba(239,68,68,.4);animation:mpulse 1.6s ease-out infinite}
+@keyframes mpulse{0%{transform:scale(.9);opacity:.65}100%{transform:scale(2.1);opacity:0}}
+.pmark .lead{position:absolute;top:-14px;background:rgba(255,255,255,.94);border:1px solid rgba(239,68,68,.28);border-radius:10px;padding:5px 9px;box-shadow:0 2px 10px rgba(15,30,60,.16);min-width:128px;max-width:190px;text-align:left;line-height:1.35;z-index:2;pointer-events:none}
+.pmark .lead-r{left:24px}
+.pmark .lead-l{right:24px}
+.pmark .lead-r::before{content:'';position:absolute;left:-13px;top:14px;width:12px;height:2px;background:#ef4444}
+.pmark .lead-l::before{content:'';position:absolute;right:-13px;top:14px;width:12px;height:2px;background:#ef4444}
+.pmark .lead b{display:block;font-size:10.5px;color:#c22626;margin-bottom:2px;white-space:nowrap}
+.pmark .lead .lc{font-size:9.5px;color:#33466b;white-space:nowrap}
+@media (max-width:520px){.pmark .lead{max-width:168px;min-width:110px}.pmark .lead .lc{font-size:9px}}
+@media (max-width:520px){.pmark b{font-size:9px;padding:1px 5px}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>🩺 Med<span>Schedule</span></h1>
+    <div class="sub" id="subInfo">加载中…</div>
+  </div>
+  <button class="icon-btn" id="btnSettings" title="设置" aria-label="设置">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
+</div>
+
+<div class="remind-bar" id="remindBar">
+  <div class="rb-group" id="rbSet">
+    <span>🔔 上课提醒:课前</span>
+    <div class="wk-pick" id="rmBarBox" style="flex:0 0 auto">
+      <button type="button" class="wk-trigger" id="rmBarTrigger" title="课前提前量" style="min-width:86px">
+        <span id="rmBarVal">60 分钟</span>
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3"
+          stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="wk-menu" id="rmBarMenu" hidden style="min-width:110px">
+        <div class="wk-it" data-min="15"><span>15 分钟</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <div class="wk-it" data-min="30"><span>30 分钟</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <div class="wk-it" data-min="45"><span>45 分钟</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <div class="wk-it" data-min="60"><span>60 分钟</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <div class="wk-it" data-min="90"><span>90 分钟</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <div class="wk-it" data-min="120"><span>120 分钟</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+      </div>
+    </div>
+    <span>分钟提醒我</span>
+    <button class="btn" id="rbOk">确定</button>
+  </div>
+</div>
+
+<div class="rain-banner" id="rainBanner" hidden>
+  <span id="rainBannerText">☔ 今天有雨,出门记得带伞</span>
+  <button class="rb-x" onclick="closeRainBanner()">✕</button>
+</div>
+
+<div class="tabs">
+  <div class="tab on" data-t="week">📚 课表</div>
+  <div class="tab" data-t="conf">⚠️ 冲突</div>
+  <div class="tab" data-t="daily">📋 每日任务</div>
+  <div class="tab" data-t="rev">🧠 复习</div>
+  <div class="tab" data-t="tmr">🌤 天气·明日</div>
+  <div class="tab" data-t="map">🗺 地图</div>
+  <div class="tab" data-t="words">🆎 四六级</div>
+  <div class="tab" data-t="anat">🩺 解剖</div>
+</div>
+
+<main>
+  <section class="panel on" id="p-week">
+    <div class="weeknav">
+      <button class="navbtn" id="prevWk" title="上一周">‹</button>
+      <div class="wk-pick" id="wkPickBox">
+        <button type="button" class="wk-trigger" id="wkTrigger" title="选择周次">
+          <span id="wkNum">第 1 周</span>
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3"
+            stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="wk-menu" id="wkMenu" role="listbox" hidden></div>
+      </div>
+      <div class="wk-box">
+        <span id="wkRange"></span>
+      </div>
+      <button class="navbtn" id="nextWk" title="下一周">›</button>
+      <button class="btn ghost sm" id="backToday" title="回到本周">回本周</button>
+    </div>
+    <div class="stats" id="wkStats"></div>
+    <div class="examtip" id="examTip" hidden></div>
+    <div class="weekwrap"><div class="week" id="weekGrid"></div></div>
+  </section>
+  <section class="panel" id="p-conf"><div id="confList"></div></section>
+  <section class="panel" id="p-daily">
+    <div class="card"><h3>我的待办</h3>
+      <div class="daily-add">
+        <input id="dailyInput" placeholder="今天想完成什么?如:背完20个专业英语词汇">
+        <button class="btn" id="btnDailyAdd">添加</button>
+      </div>
+      <div id="dailyList" style="margin-top:6px"></div>
+      <div class="hint" id="dailyStat" style="margin-top:8px"></div>
+    </div>
+    <div class="card" style="margin-top:12px"><h3>今日复习</h3><div id="dailyRev"></div></div>
+  </section>
+  <section class="panel" id="p-rev"><div id="revHead" class="rev-head"></div><div id="revList"></div></section>
+  <section class="panel" id="p-tmr"><div id="tmrBox"></div></section>
+  <section class="panel" id="p-map">
+    <div class="card">
+      <h3>🗺 今日上课地点</h3>
+      <div class="hint" id="mapHead">加载中…</div>
+      <div id="mapBox" style="border-radius:14px;margin-top:10px;background:#eef3fb;overflow:hidden">
+        <div class="map-scroll"><div class="mapimg-wrap">
+          <img src="assets/campus-map.jpg" alt="郑州大学主校区地图">
+          <div class="mapmark-layer"></div>
+        </div></div>
+      </div>
+      <div id="mapList" style="margin-top:12px"></div>
+      <div class="hint" style="margin-top:8px">楼栋位置为近似标注,实际以校内路牌为准</div>
+    </div>
+  </section>
+  <section class="panel" id="p-words">
+    <div class="card">
+      <h3>🆎 每日单词提问</h3>
+      <div class="wd-level">
+        <button class="wd-lv on" data-lv="cet4">📗 四级词汇</button>
+        <button class="wd-lv" data-lv="cet6">📕 六级词汇</button>
+        <button class="wd-lv" data-lv="mix">🔀 混合</button>
+      </div>
+      <div class="wd-head">
+        <span class="hint" id="wdDate"></span>
+        <button class="wd-refresh" id="wdRefresh">🔄 换一批</button>
+      </div>
+      <div class="wd-set">
+        <span>每天几个:</span>
+        <button class="wd-n" data-n="5">5</button>
+        <button class="wd-n" data-n="10">10</button>
+        <button class="wd-n" data-n="15">15</button>
+        <button class="wd-n" data-n="20">20</button>
+      </div>
+      <div class="wd-progress"><div class="wd-bar" id="wdBar"></div></div>
+      <div id="wdList" style="margin-top:10px"></div>
+      <button class="wd-refresh" id="wdReviewBtn" style="margin-top:12px">📚 已刷清单(<span id="wdReviewN">0</span>)</button>
+      <div id="wdReview" hidden style="margin-top:6px"></div>
+      <div class="hint" style="margin-top:10px">点击单词卡片查看释义,点"记住了"标记掌握(当天记录,次日重置);"换一批"可立即换组,不限次数</div>
+    </div>
+    <div class="gr-card">
+      <h3>📖 每日高级语法</h3>
+      <div class="wd-head">
+        <span class="hint" id="grDate"></span>
+        <button class="wd-refresh" id="grRefresh">🔄 换一句</button>
+      </div>
+      <div class="gr-box" id="grBox"></div>
+      <div class="hint" style="margin-top:8px">每天一句高级语法,点"换一句"可立即换(不限次数)</div>
+    </div>
+  </section>
+  <section class="panel" id="p-anat">
+    <div class="card">
+      <h3>🩺 每日解剖问答</h3>
+      <div class="wd-head">
+        <span class="hint" id="anDate"></span>
+        <button class="wd-refresh" id="anRefresh">🔄 换一批</button>
+      </div>
+      <div class="an-set">
+        <span>每天几个:</span>
+        <button class="an-n" data-n="5">5</button>
+        <button class="an-n" data-n="10">10</button>
+        <button class="an-n" data-n="15">15</button>
+        <button class="an-n" data-n="20">20</button>
+      </div>
+      <div class="wd-progress"><div class="wd-bar" id="anBar"></div></div>
+      <div id="anList" style="margin-top:10px"></div>
+      <button class="wd-refresh" id="anReviewBtn" style="margin-top:12px">📚 已刷清单(<span id="anReviewN">0</span>)</button>
+      <div id="anReview" hidden style="margin-top:6px"></div>
+      <div class="hint" style="margin-top:10px">点击题目看答案,点"记住了"标记掌握(当天记录,次日重置);"换一批"可立即换组,不限次数</div>
+    </div>
+  </section>
+</main>
+
+<button class="btn fab" id="btnImport">＋ 导入课表</button>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h2>导入课表</h2>
+
+    <div class="hint" style="margin-bottom:8px"><b>📷 方式一:扫描截图</b>(首次识别需联网下载识别引擎)</div>
+    <div class="drop" id="drop">
+      <div>📷 点击选择或拖入课表截图</div>
+      <small>支持 JPG / PNG,清晰无折叠的整表截图识别最准</small>
+    </div>
+    <input type="file" id="imgInput" accept="image/*" hidden>
+    <img id="imgPrev" alt="课表截图预览" hidden>
+    <div class="hint" id="ocrProg" hidden>正在识别… <span id="ocrPct">0%</span></div>
+    <div class="row" style="margin-bottom:14px">
+      <button class="btn ghost" id="btnOcr" hidden>开始识别</button>
+    </div>
+
+    <div class="hint" style="border-top:1px solid var(--line);padding-top:12px"><b>✍️ 方式二:粘贴文本</b><br>
+      每行一门课,格式:<br>
+      <b>周几 开始-结束 课程名 @地点 周次 类型</b><br>
+      例:<code>周一 08:00-09:40 系统解剖学 @教学楼A-301 1-16周 理论</code><br>
+      周次可写 <code>1-16</code> 或 <code>2,4,6,8</code>(双周)
+    </div>
+    <textarea id="impText" placeholder="周一 08:00-09:40 系统解剖学 @教学楼A-301 1-16周 理论
+周一 10:00-11:40 系统解剖学（实验） @基础医学院-解剖实验室B203 1-16周 实验
+周二 08:00-09:40 组织学与胚胎学 @教学楼A-205 1-16周 理论"></textarea>
+    <div class="hint" style="margin-bottom:14px">识别结果会自动填入上方,请检查修正后再导入;<b>导入会直接替换当前课表</b>(也可先点下方"清空全部")。</div>
+    <div class="row" style="margin-bottom:14px">
+      <button class="btn" id="btnParse">解析并导入</button>
+      <button class="btn ghost" id="btnSample">载入示例</button>
+    </div>
+    <div class="hint" style="border-top:1px solid var(--line);padding-top:12px"><b>📅 方式三:考试安排</b><br>
+      每行一条,格式:<br>
+      <b>第X周 周几 开始-结束 科目</b><br>
+      例:<code>第9周 周二 08:00-09:40 生物化学(考试)</code><br>
+      导入会按周追加到考试安排(同一条不会重复)
+    </div>
+    <textarea id="impExam" placeholder="第9周 周二 08:00-09:40 生物化学(考试)
+第9周 周三 14:00-16:00 大学英语(考试)"></textarea>
+    <div class="row" style="margin-bottom:14px">
+      <button class="btn" id="btnParseExam">解析并导入考试安排</button>
+      <button class="btn ghost" id="btnScanExam">📷 扫描照片录入</button>
+      <input type="file" id="impExamPhoto" accept="image/*" style="display:none">
+    </div>
+    <div class="row" style="margin-bottom:14px">
+      <button class="btn ghost" id="btnExport">导出课表文本</button>
+      <button class="btn ghost" id="btnCopy" hidden>复制</button>
+      <button class="btn ghost" id="btnClear">清空全部</button>
+      <button class="btn ghost" id="btnClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="courseModal">
+  <div class="sheet">
+    <div class="c-head">
+      <h2 id="cName"></h2>
+      <div id="cMeta"></div>
+    </div>
+    <div class="c-row"><span>时间</span><b id="cTime"></b></div>
+    <div class="c-row"><span>地点</span><b id="cLoc"></b></div>
+    <div class="c-row" style="align-items:flex-start"><span>横幅提醒</span>
+      <div style="flex:1">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="rmMinEdit" type="number" min="0" max="60" placeholder="提前量" style="width:88px">
+          <div class="wk-pick" id="rmUnitBox" style="flex:0 0 auto">
+            <button type="button" class="wk-trigger" id="rmUnitTrigger" title="提醒提前量单位">
+              <span id="rmUnitVal">分钟</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="wk-menu" id="rmUnitMenu" hidden style="min-width:110px">
+              <div class="wk-it" data-u="min"><span>分钟</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+              <div class="wk-it" data-u="h"><span>小时</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+              <div class="wk-it" data-u="d"><span>天</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+            </div>
+          </div>
+          <input id="rmTextEdit" type="text" placeholder="提醒字幕,如:该去上课啦(留空用默认)" style="flex:1;min-width:150px">
+        </div>
+        <button class="btn primary" id="btnSaveRemind" style="margin-top:8px">保存提醒</button>
+        <div class="hint" style="margin:6px 0 0">字幕可写 {课}=课程名、{分钟}=剩余分钟;分钟留空则跟随全局提醒</div>
+      </div>
+    </div>
+    <div class="c-row" style="align-items:flex-start"><span>内容</span>
+      <div style="flex:1">
+        <textarea id="cContentEdit" rows="1" placeholder="当前章节/内容,如:绪论·运动系统"></textarea>
+        <button class="btn primary" id="btnSaveContent" style="margin-top:8px">保存内容</button>
+      </div>
+    </div>
+    <div class="c-row" style="align-items:flex-start"><span>备注</span>
+      <div style="flex:1">
+        <textarea id="cNote" rows="2" placeholder="写点自己的备注:考试时间、重点章节、老师要求…"></textarea>
+        <button class="btn primary" id="btnSaveNote" style="margin-top:8px">保存备注</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn ghost danger" id="btnDelCourse">删除这门课</button>
+      <button class="btn ghost" id="btnCourseClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="reviewModal">
+  <div class="sheet">
+    <div class="c-head">
+      <h2 id="rvName"></h2>
+      <div id="rvMeta" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
+    </div>
+    <div class="c-row" style="align-items:flex-start"><span>完成度</span>
+      <div style="flex:1">
+        <input type="range" id="rvRange" min="0" max="100" step="5" value="0" style="width:100%;accent-color:var(--primary)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+          <b id="rvPct">0%</b>
+          <span>
+            <button class="btn ghost" id="btnRvReset">重置</button>
+            <button class="btn ghost" id="btnRvDone">标记完成</button>
+          </span>
+        </div>
+        <button class="btn primary" id="btnRvSave" style="margin-top:12px;width:100%">保存完成度</button>
+      </div>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn ghost" id="btnRvClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="reviewAddModal">
+  <div class="sheet">
+    <div class="c-head"><h2>➕ 添加复习任务</h2>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">手动补充想复习的内容(课程外或补充)</div></div>
+    <div class="c-row"><span>科目/标题</span><input id="rvAddTitle" placeholder="如:四六级词汇" style="flex:1"></div>
+    <div class="c-row"><span>日期</span><input type="date" id="rvAddDate" style="flex:1"></div>
+    <div class="c-row"><span>内容</span><input id="rvAddTopic" placeholder="如:第3单元高频词" style="flex:1"></div>
+    <div class="c-row"><span>方法</span><input id="rvAddMethod" placeholder="如:背诵/刷题" style="flex:1"></div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn ghost" id="rvAddCancel">取消</button>
+      <button class="btn primary" id="rvAddSave" style="flex:1">保存任务</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="reviewHisModal">
+  <div class="sheet">
+    <div class="c-head"><h2>📜 历史复习任务</h2>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">已完成的自动任务 + 你添加的自定义任务</div></div>
+    <div id="rvHisList" style="max-height:52vh;overflow:auto"></div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn ghost" id="rvHisClose" style="flex:1">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="settingsModal">
+  <div class="sheet">
+    <div class="c-head">
+      <h2>⚙️ 设置</h2>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">城市、开学日期、上课提醒</div>
+    </div>
+    <div class="c-row"><span>城市</span><input id="setCity2" placeholder="如:郑州"></div>
+    <div class="c-row"><span>开学日</span><input id="setTerm2" placeholder="2026-09-07"></div>
+    <div class="c-row" style="align-items:flex-start"><span>上课提醒</span>
+      <div style="flex:1">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px">
+          <input type="checkbox" id="remindOn2" style="width:16px;height:16px;margin:0;accent-color:var(--primary)"> 开启课前提醒
+        </label>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <span>课前</span>
+          <div class="wk-pick" id="rmMinBox" style="flex:0 0 auto">
+            <button type="button" class="wk-trigger" id="rmMinTrigger" title="课前提前量">
+              <span id="rmMinVal">60 分钟</span>
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3"
+                stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="wk-menu" id="rmMinMenu" hidden style="min-width:110px">
+              <div class="wk-it" data-min="15"><span>15 分钟</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+              <div class="wk-it" data-min="30"><span>30 分钟</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+              <div class="wk-it" data-min="45"><span>45 分钟</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+              <div class="wk-it" data-min="60"><span>60 分钟</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+              <div class="wk-it" data-min="90"><span>90 分钟</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+              <div class="wk-it" data-min="120"><span>120 分钟</span><svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></div>
+            </div>
+          </div>
+          <span>分钟提醒我</span>
+        </div>
+      </div>
+    </div>
+    <div class="c-row" style="align-items:flex-start"><span>雨天提醒</span>
+      <div style="flex:1">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px">
+          <input type="checkbox" id="rainOn2" style="width:16px;height:16px;margin:0;accent-color:var(--primary)"> 今天有雨时横幅提醒
+        </label>
+        <div class="hint" style="margin-top:4px">开启后,当天预报降雨时顶部显示"记得带伞"横幅</div>
+      </div>
+    </div>
+    <div class="c-row" style="align-items:flex-start"><span>考试周</span>
+      <div style="flex:1">
+        <input id="setExamWeeks" placeholder="如:18,19(多个用逗号分隔)">
+        <div class="hint" id="setExam" style="margin-top:4px"></div>
+      </div>
+    </div>
+    <div class="c-row" style="align-items:flex-start"><span>功能管理</span>
+      <div style="flex:1">
+        <div class="fg-grid">
+          <label class="fg-it"><input type="checkbox" id="fg-conf"> ⚠️ 冲突</label>
+          <label class="fg-it"><input type="checkbox" id="fg-daily"> 📋 每日任务</label>
+          <label class="fg-it"><input type="checkbox" id="fg-rev"> 🧠 复习</label>
+          <label class="fg-it"><input type="checkbox" id="fg-tmr"> 🌤 明日</label>
+          <label class="fg-it"><input type="checkbox" id="fg-map"> 🗺 地图</label>
+          <label class="fg-it"><input type="checkbox" id="fg-words"> 🆎 四六级</label>
+          <label class="fg-it"><input type="checkbox" id="fg-anat"> 🩺 解剖</label>
+        </div>
+        <div class="hint" style="margin-top:6px">取消勾选即可隐藏底部对应栏目;课表始终保留</div>
+      </div>
+    </div>
+    <div class="c-row" style="align-items:flex-start"><span>数据备份</span>
+      <div style="flex:1">
+        <div style="display:flex;gap:8px">
+          <button class="btn ghost" id="btnExportBackup" style="flex:1">📤 导出备份</button>
+          <button class="btn ghost" id="btnImportBackup" style="flex:1">📥 导入备份</button>
+          <input type="file" id="importBackupFile" accept=".json,application/json" style="display:none">
+        </div>
+        <div class="hint" style="margin-top:6px">备份含课表、待办、复习进度、已刷记录、提醒与功能设置;换设备或清缓存前先导出</div>
+      </div>
+    </div>
+    <div class="c-row" style="align-items:flex-start"><span>软件信息</span>
+      <div style="flex:1;font-size:13px">
+        <div><b>MedSchedule · 医学生智能课表</b></div>
+        <div class="hint" style="margin-top:4px">制作人:于冀川 · 王一晰</div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" id="btnSaveSet">保存设置</button>
+      <button class="btn ghost danger" id="btnWipe2">🗑 删除当前课表</button>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn ghost" id="btnSettingsClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="remindModal">
+  <div class="sheet">
+    <div class="c-head">
+      <h2>⏰ 上课提醒</h2>
+      <div id="rmMeta" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
+    </div>
+    <div style="font-size:16px;font-weight:700;padding:8px 2px" id="rmText"></div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" id="rmOk">知道了</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="todoModal">
+  <div class="sheet">
+    <div class="c-head">
+      <h2>⏰ 待办提醒</h2>
+      <div id="tmMeta" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
+    </div>
+    <div style="font-size:16px;font-weight:700;padding:8px 2px" id="tmText"></div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" id="tmOk">知道了</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="confHideModal">
+  <div class="sheet">
+    <div class="c-head"><h2>🗑 已删除的冲突</h2></div>
+    <div id="confHideList" style="max-height:340px;overflow:auto"></div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" id="cfRestoreAll">全部恢复</button>
+      <button class="btn" id="cfHideClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="confAddModal">
+  <div class="sheet">
+    <div class="c-head"><h2>➕ 添加冲突</h2></div>
+    <div style="font-size:12.5px;color:var(--muted);padding:2px 2px 8px">手动记录一个冲突(如临时加课、开会、看病等),会显示在冲突页</div>
+    <input id="cfAddTitle" type="text" placeholder="冲突标题(必填),例:周三晚临时加课" style="width:100%;box-sizing:border-box;margin-bottom:8px">
+    <textarea id="cfAddDetail" placeholder="详情(可选),例:与周四下午实验冲突,需调整时间" style="width:100%;box-sizing:border-box;min-height:70px;margin-bottom:12px"></textarea>
+    <div class="row">
+      <button class="btn primary" id="cfAddOk">保存</button>
+      <button class="btn" id="cfAddCancel">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="importModal">
+  <div class="sheet">
+    <div class="c-head"><h2>📥 导入备份</h2></div>
+    <div id="importMeta" style="font-size:13px;color:#425;line-height:1.6;padding:4px 2px"></div>
+    <div style="font-size:12.5px;color:var(--muted);padding:4px 2px">导入会覆盖当前本机数据,确认后自动刷新页面。</div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" id="importOk">确认导入</button>
+      <button class="btn" id="importCancel">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="restModal">
+  <div class="sheet">
+    <div class="c-head">
+      <h2>🏖 休息提醒</h2>
+      <div id="rtMeta" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
+    </div>
+    <div style="font-size:16px;font-weight:700;padding:8px 2px" id="rtText"></div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn primary" id="rtOk">知道了</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="setModal">
+  <div class="sheet">
+    <div class="c-head">
+      <h2>⏰ 设置待办提醒</h2>
+      <div id="setMeta" style="font-size:12px;color:var(--muted);margin-top:4px"></div>
+    </div>
+    <input id="setRmInput" type="text" placeholder="如:今天 18:30 / 明天 08:00 / 30分钟后 / 07-31 15:00" style="margin-top:12px;width:100%;box-sizing:border-box">
+    <div class="hint" style="margin-top:8px">支持:今天 18:30 / 明天 08:00 / 18:30(默认今天) / 07-31 15:00 / 2026-10-31 15:00 / 30分钟后 / 1小时后 / 2天后;输入 0 或留空 = 清除提醒</div>
+    <div class="row" style="margin-top:14px">
+      <button class="btn ghost" id="setRmClear">清除提醒</button>
+      <button class="btn ghost" id="setRmCancel">取消</button>
+      <button class="btn primary" id="setRmOk">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="photoModal">
+  <div class="sheet">
+    <img id="photoBig" alt="成果图">
+    <div class="row" style="margin-top:14px">
+      <button class="btn ghost danger" id="btnPhotoDel">删除这张图</button>
+      <button class="btn ghost" id="btnPhotoClose">关闭</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="celModal">
+  <div class="sheet cel-card">
+    <div class="cel-emoji">🎉</div>
+    <div class="cel-txt" id="celTxt"></div>
+    <div class="cel-sub" id="celSub"></div>
+    <div class="cel-gain" id="celGain"></div>
+    <button class="btn" id="btnCelClose" style="margin-top:18px;background:rgba(255,255,255,.22);color:#fff;border:0">继续复习</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ================= 配置区(改这里就能适配你自己学校) ================= */
+const CFG = {
+  dayStart: 7*60+30, dayEnd: 22*60+30,
+  meals: [[11*60+40, 13*60], [17*60+30, 18*60+30]],
+  dayCap: 120,                 // 每天复习上限(分钟)
+  examWeeks: [18, 19],         // 考试周(2026-2027-1 学期共19周,第18-19周复习考试,校历12/28-1/10)
+  buffer: 5,                   // 转场缓冲(分钟)
+  defaultCity: '郑州'
+};
+const ZONE = { same: 3, area: 6, cross: 18, campus: 35 };  // 步行分钟数
+let cfgExamWeeks = (()=>{
+  try{
+    const v = JSON.parse(localStorage.getItem('ms.examWeeks'));
+    if(Array.isArray(v) && v.length && v.every(n=> Number.isInteger(n) && n >= 1 && n <= 20)) return v;
+  }catch(e){}
+  return [18, 19];   // 默认:第18-19周(校历复习考试周)
+})();
+const saveExamWeeks = ()=> localStorage.setItem('ms.examWeeks', JSON.stringify(cfgExamWeeks));
+const WK = ['周一','周二','周三','周四','周五','周六','周日'];
+const EBB = [
+  {d:1,  m:20, method:'合上书默写知识骨架'},
+  {d:2,  m:15, method:'与上次课做对比表格'},
+  {d:4,  m:15, method:'名词解释 + 3 道真题'},
+  {d:7,  m:10, method:'切片/解剖图口述'},
+  {d:15, m:10, method:'只翻错题 + 思维导图'}
+];
+const STRENGTH = {'理论':1.0,'实验':1.15,'见习':1.2,'选修':0.85};
+
+/* ================= 工具函数 ================= */
+const hm = s => { const [a,b] = s.split(':').map(Number); return a*60+b; };
+const mh = m => String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+const ymd = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+const addDays = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+const isoWd = d => d.getDay() === 0 ? 7 : d.getDay();
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, ch =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+function toast(msg){
+  let el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('on');
+  clearTimeout(el._t); el._t = setTimeout(()=> el.classList.remove('on'), 1800);
+}
+
+function fmtWeeks(ws){
+  const a = [...new Set(ws)].sort((x,y)=>x-y), out = [];
+  for(let i=0;i<a.length;){
+    let j=i; while(j+1<a.length && a[j+1]===a[j]+1) j++;
+    out.push(i===j ? String(a[i]) : a[i]+'-'+a[j]);
+    i=j+1;
+  }
+  return out.join(',') + '周';
+}
+function parseWeeks(str){
+  const set = new Set();
+  String(str).split(/[,，、\s]+/).forEach(p=>{
+    if(!p) return;
+    const m = p.match(/^(\d+)\s*[-~到]\s*(\d+)$/);
+    if(m){ for(let i=+m[1];i<=+m[2];i++) set.add(i); }
+    else if(/^\d+$/.test(p)) set.add(+p);
+  });
+  return set.size ? [...set].sort((a,b)=>a-b) : [...Array(16)].map((_,i)=>i+1);
+}
+function zoneOf(loc){
+  if(!loc) return '';
+  const i = loc.search(/[-－ ]/);
+  return i > 0 ? loc.slice(0,i) : loc.slice(0,4);
+}
+function travelMinutes(a,b){
+  if(!a||!b) return 10;
+  if(a===b) return ZONE.same;
+  if(zoneOf(a)===zoneOf(b)) return ZONE.area;
+  if(a.includes('校区') !== b.includes('校区')) return ZONE.campus;
+  return ZONE.cross;
+}
+
+/* ================= 学期与数据 ================= */
+function defaultTermStart(){
+  const t = new Date(); t.setHours(0,0,0,0);
+  return addDays(t, -t.getDay() + 1 - 49);   // 本周周一往前 7 周 → 今天在第 8 周
+}
+let TERM_START = new Date((localStorage.getItem('ms.term') || '2026-09-07'));  // 2026-2027-1 学期第1周周一
+let CITY = localStorage.getItem('ms.city') || CFG.defaultCity;
+const weekOf = d => Math.floor((new Date(d) - TERM_START) / 604800000) + 1;
+function dateOfWeek(w, wd){ const d = new Date(TERM_START); d.setDate(d.getDate() + (w-1)*7 + wd - 1); return d; }
+
+const SAMPLE = [
+  {name:'系统解剖学', weekday:1, start:'08:00', end:'09:40', location:'教学楼A-301', kind:'理论', weeks:parseWeeks('1-16'), content:'绪论·运动系统', credit:4},
+  {name:'系统解剖学（实验）', weekday:1, start:'10:00', end:'11:40', location:'基础医学院-解剖实验室B203', kind:'实验', weeks:parseWeeks('1-16'), content:'上肢骨与关节', credit:1.5},
+  {name:'组织学与胚胎学', weekday:2, start:'08:00', end:'09:40', location:'教学楼A-205', kind:'理论', weeks:parseWeeks('1-16'), content:'上皮组织与腺体', credit:3},
+  {name:'生理学', weekday:2, start:'10:00', end:'11:40', location:'教学楼A-205', kind:'理论', weeks:parseWeeks('1-16'), content:'细胞膜物质转运', credit:4},
+  {name:'病理学', weekday:3, start:'10:00', end:'11:40', location:'教学楼B-105', kind:'理论', weeks:parseWeeks('1-16'), content:'细胞损伤与适应', credit:4},
+  {name:'医学免疫学', weekday:3, start:'10:00', end:'11:40', location:'教学楼B-208', kind:'理论', weeks:parseWeeks('2,4,6,8,10,12,14,16'), content:'抗原提呈与MHC', credit:2},
+  {name:'病理学（实验）', weekday:4, start:'14:00', end:'15:40', location:'基础医学院-病理实验室A108', kind:'实验', weeks:parseWeeks('1-16'), content:'组织切片:肝脂肪变', credit:1.5},
+  {name:'诊断学', weekday:5, start:'08:00', end:'09:40', location:'临床医学院-技能中心', kind:'见习', weeks:parseWeeks('1-19'), content:'问诊与病史采集', credit:3},
+  {name:'大学英语', weekday:3, start:'19:00', end:'20:40', location:'教学楼C-201', kind:'理论', weeks:parseWeeks('1-16'), content:'', credit:2}
+];
+
+/* ============ 我的课表(教务系统接口 2026-2027-1 学期,默认载入) ============
+   数据来源:jwxt.zzu.edu.cn 学生课表接口(semesterId=194,含实验),周次/教室/任课教师均为教务实时数据;
+   学期第1周周一 = 2026-09-07;#老师: 为任课教师注释,解析时自动提取。 */
+const USER_TEXT = [
+  '周一 08:00-09:40 普通化学 (B) @南3_407 4,8-17周 理论  #老师:蔡金孟',
+  '周一 08:00-09:40 大学英语（I） @南2_303B(智慧教室) 6-7周 理论  #老师:段艳丹',
+  '周一 10:10-11:50 大学生心理健康教育 @数_307 4,6-7,10-17周 选修  #老师:梁紫平',
+  '周一 10:10-11:50 大学生心理健康教育 @线上/待定 8-9周 选修  #老师:梁紫平',
+  '周一 14:00-17:40 04# 盐酸溶液标定 8周 实验  #老师:李林科',
+  '周一 14:00-17:40 06# 沉淀法制备二氧化硅 10周 实验  #老师:李林科',
+  '周一 14:00-17:40 07# 气体常数的测定 11周 实验  #老师:李林科',
+  '周一 14:00-17:40 03# 溶液配制 7周 实验  #老师:李林科',
+  '周一 14:00-17:40 01# 实验安全教育,认知仪器 4周 实验  #老师:李林科',
+  '周一 14:00-17:40 04# 氢氧化钠溶液标定 9周 实验  #老师:李林科',
+  '周一 14:00-17:40 02# 氯化钠的提纯 6周 实验  #老师:李林科',
+  '周一 16:00-17:40 组织学与胚胎学 @环_401 15-17周 理论  #老师:刘国红/杨继要',
+  '周一 19:00-20:40 小脑、间脑 15-16周 理论  #老师:帖红艳',
+  '周一 19:00-20:40 脊髓、脑干 13-14周 理论  #老师:刘锦/帖红艳',
+  '周一 19:00-20:40 脑神经 11-12周 理论  #老师:刘锦',
+  '周二 08:00-11:50 1、听力曲线的测试 13周 实验',
+  '周二 08:00-11:50 3、用光栅及分光仪测光波波长 17周 实验',
+  '周二 08:00-11:50 4、半导体热敏电阻特性研究 7周 实验',
+  '周二 08:00-11:50 6、超声声速的测量及应用 11周 实验',
+  '周二 08:00-11:50 5、示波器的使用 9周 实验',
+  '周二 08:00-11:50 2、用旋光计测量糖溶液的浓度 15周 实验',
+  '周二 10:10-11:50 大学生心理健康教育 @北1_201 12,14,16周 选修  #老师:梁紫平',
+  '周二 10:10-11:50 医学检验导论 @北3_408 6周 理论  #老师:岳保红',
+  '周二 14:00-15:40 大学物理B @北3_412 4,6-17周 理论  #老师:刘海东',
+  '周二 16:00-17:40 系统解剖学 @北3_208 4,6-16周 理论  #老师:帖红艳',
+  '周三 08:00-09:40 大学英语（I） @南2_303B(智慧教室) 4,6-17周 理论  #老师:段艳丹',
+  '周三 10:10-11:50 组织学与胚胎学 @材_307 4,6-9周 理论  #老师:金辉/黄忻',
+  '周三 10:10-11:50 组织学与胚胎学 @环_401 10-17周 理论  #老师:刘国红/杨继要/金辉',
+  '周三 14:00-15:40 大学物理B @北3_412 17周 理论  #老师:王宇航',
+  '周三 14:00-15:40 系统解剖学 @北2_102 13-16周 理论  #老师:帖红艳',
+  '周三 14:00-15:40 医学检验导论 @材_506 6-12周 理论  #老师:孙萍萍/岳保红/李文悌',
+  '周三 16:00-17:40 普通化学 (B) @南3_407 4,6-17周 理论  #老师:蔡金孟',
+  '周三 19:00-20:40 创新创业基础 @北1_402 6-13周 选修  #老师:王梦梦',
+  '周四 08:00-09:40 体育（I） @南操场 15-17周 理论  #老师:方志童',
+  '周四 10:10-11:50 体育（I） @南操场 5-17周 理论  #老师:方志童',
+  '周四 14:00-15:40 人工智能通识与数字素养 @计3机房 5-17周 选修  #老师:胡庆红',
+  '周四 16:00-17:40 大学物理B @北3_412 5-6,8-17周 理论  #老师:刘海东',
+  '周四 16:00-17:40 人工智能通识与数字素养 @北2_406 7周 选修  #老师:胡庆红',
+  '周四 19:00-20:40 人工智能通识与数字素养 @北2_306 5-17周 选修  #老师:胡庆红',
+  '周五 08:00-11:50 面颅骨、关节 7周 理论  #老师:帖红艳',
+  '周五 08:00-11:50 脊神经 16周 理论  #老师:帖红艳',
+  '周五 08:00-11:50 四肢骨、脑颅骨 6周 理论  #老师:帖红艳',
+  '周五 08:00-11:50 心 12周 理论  #老师:刘锦',
+  '周五 08:00-11:50 男性/女性生殖系统、腹膜会阴 11周 理论  #老师:刘锦',
+  '周五 08:00-11:50 静脉、淋巴 14周 理论  #老师:帖红艳',
+  '周五 08:00-11:50 躯干骨 5周 理论  #老师:帖红艳',
+  '周五 08:00-11:50 全身肌 8周 理论  #老师:帖红艳',
+  '周五 08:00-11:50 消化系统 9周 理论  #老师:帖红艳',
+  '周五 08:00-11:50 呼吸系统、泌尿系统 10周 理论  #老师:帖红艳',
+  '周五 08:00-11:50 感觉器（视器、前庭蜗器） 15周 理论  #老师:帖红艳',
+  '周五 08:00-11:50 动脉 13周 理论  #老师:刘锦',
+  '周五 14:00-15:40 大学物理B @北3_412 11-16周 理论  #老师:刘海东',
+  '周五 19:00-20:40 神经系统传导路 15-16周 理论  #老师:帖红艳',
+  '周五 19:00-20:40 端脑 11-12周 理论  #老师:刘锦',
+  '周五 19:00-20:40 脑脊髓被膜、脑血管、脑脊液 13-14周 理论  #老师:刘锦/帖红艳',
+  '周六 08:00-09:40 大学英语（I） @南2_303B(智慧教室) 5周 理论  #老师:段艳丹',
+  '周六 14:00-15:40 人工智能通识与数字素养 @南4_103 7周 选修  #老师:胡庆红',
+  '周六 16:00-17:40 军事理论 @北1_104 8-13,15-16周 理论  #老师:卢璐',
+  '周日 08:00-11:50 08# 水溶液中的离子平衡 5周 实验  #老师:李林科',
+  '周日 08:00-11:50 免疫系统 12周 理论  #老师:刘莉',
+  '周日 08:00-11:50 内分泌系统 13周 理论  #老师:刘莉',
+  '周日 08:00-11:50 绪论、上皮组织 6周 理论  #老师:刘莉',
+  '周日 08:00-11:50 结缔组织 7周 理论  #老师:刘莉',
+  '周日 08:00-11:50 血液、肌组织 9周 理论  #老师:刘莉',
+  '周日 08:00-11:50 女性生殖系统、胚胎学总论 16周 理论  #老师:刘莉',
+  '周日 08:00-11:50 神经组织 10周 理论  #老师:刘莉',
+  '周日 08:00-11:50 循环系统 11周 理论  #老师:刘莉',
+  '周日 08:00-11:50 消化腺、呼吸系统、泌尿系统、男性生殖系统 15周 理论  #老师:刘莉',
+  '周日 08:00-11:50 消化管 14周 理论  #老师:刘莉',
+  '周日 08:00-11:50 软骨、骨 8周 理论  #老师:刘莉',
+  '周日 14:00-17:40 系统的发生 16周 理论  #老师:刘莉'
+].join('\n');
+const USER_COURSES = parseText(USER_TEXT).map(c => ({...c, content:''}));
+
+const DATA_VERSION = 'zzu-2026-2027-1b';   // 内置课表数据版本;升级后自动用新数据替换本地旧课表
+let courses;
+try{
+  const saved = JSON.parse(localStorage.getItem('ms.courses') || 'null');
+  courses = (localStorage.getItem('ms.dataVersion') === DATA_VERSION && saved) ? saved : USER_COURSES;
+}catch(e){ courses = USER_COURSES; }
+if(localStorage.getItem('ms.dataVersion') !== DATA_VERSION){
+  localStorage.setItem('ms.dataVersion', DATA_VERSION);
+  localStorage.setItem('ms.courses', JSON.stringify(USER_COURSES));
+}
+const save = () => localStorage.setItem('ms.courses', JSON.stringify(courses));
+let reviewProg = JSON.parse(localStorage.getItem('ms.reviewProgress') || '{}');
+const saveReviewProg = () => localStorage.setItem('ms.reviewProgress', JSON.stringify(reviewProg));
+let reviewPhotos = JSON.parse(localStorage.getItem('ms.reviewPhotos') || '{}');
+const saveReviewPhotos = () => localStorage.setItem('ms.reviewPhotos', JSON.stringify(reviewPhotos));
+let reviewCustom = JSON.parse(localStorage.getItem('ms.reviewCustom') || '[]');
+const saveReviewCustom = () => localStorage.setItem('ms.reviewCustom', JSON.stringify(reviewCustom));
+function customTasks(){
+  const pd = s => { const a = String(s).split('-').map(Number); return new Date(a[0], a[1]-1, a[2]); };
+  return reviewCustom.map(x=>({
+    id: x.id, course: x.title || '自定义任务', topic: x.topic || '自主复习',
+    due: pd(x.date || ymd(new Date())), minutes: x.minutes || 30,
+    round: 0, method: x.method || '自主复习', priority: 0.5, custom: true
+  }));
+}
+const PHOTO_PCT = 50; // 每张成果图自动计入的完成度比例
+
+/* ================= 周次导航 ================= */
+let CUR_WK = 1;
+const maxWeek = () => courses.length ? Math.max(1, ...courses.map(c=>Math.max(...c.weeks))) : 1;
+const clampWeek = w => clamp(w, 1, maxWeek());
+
+function renderNav(){
+  const mx = maxWeek();
+  const menu = document.getElementById('wkMenu');
+  menu.innerHTML = '';
+  for(let w=1; w<=mx; w++){
+    const it = document.createElement('div');
+    it.className = 'wk-it' + (w === CUR_WK ? ' cur' : '');
+    it.setAttribute('data-w', w);
+    it.innerHTML = '<span>第 ' + w + ' 周</span>' +
+      '<svg class="wk-dot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+    it.onclick = ()=>{ CUR_WK = clampWeek(+it.getAttribute('data-w')); closeWkMenu(); renderNav(); renderWeek(CUR_WK); };
+    menu.appendChild(it);
+  }
+  document.getElementById('wkNum').textContent = '第 ' + CUR_WK + ' 周';
+  const d0 = dateOfWeek(CUR_WK,1), d6 = dateOfWeek(CUR_WK,7);
+  document.getElementById('wkRange').textContent =
+    (d0.getMonth()+1) + '/' + d0.getDate() + ' - ' + (d6.getMonth()+1) + '/' + d6.getDate();
+  document.getElementById('prevWk').disabled = CUR_WK <= 1;
+  document.getElementById('nextWk').disabled = CUR_WK >= mx;
+  document.getElementById('backToday').hidden = CUR_WK === weekOf(new Date());
+}
+function closeWkMenu(){ document.getElementById('wkPickBox').classList.remove('open'); document.getElementById('wkMenu').hidden = true; }
+document.getElementById('wkTrigger').onclick = ()=>{
+  const box = document.getElementById('wkPickBox');
+  const menu = document.getElementById('wkMenu');
+  const open = box.classList.toggle('open');
+  menu.hidden = !open;
+};
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#wkPickBox')) closeWkMenu();
+});
+document.getElementById('prevWk').onclick = ()=>{ CUR_WK = clampWeek(CUR_WK-1); renderNav(); renderWeek(CUR_WK); };
+document.getElementById('nextWk').onclick = ()=>{ CUR_WK = clampWeek(CUR_WK+1); renderNav(); renderWeek(CUR_WK); };
+document.getElementById('backToday').onclick = ()=>{
+  CUR_WK = clampWeek(weekOf(new Date())); renderNav(); renderWeek(CUR_WK);
+};
+
+/* ================= 冲突检测 ================= */
+function detectConflicts(){
+  const out = [];
+  const cs = [...courses].sort((a,b)=> a.weekday-b.weekday || hm(a.start)-hm(b.start));
+
+  for(let i=0;i<cs.length;i++) for(let j=i+1;j<cs.length;j++){
+    const a=cs[i], b=cs[j];
+    if(a.weekday!==b.weekday) continue;
+    const common = a.weeks.filter(w=>b.weeks.includes(w));
+    if(!common.length) continue;
+    if(!(hm(a.start) < hm(b.end) && hm(b.start) < hm(a.end))) continue;
+    const w0 = common[0];
+    out.push({level:'hard', tag:'硬冲突', title:`${a.name} ✕ ${b.name} 时间重叠`,
+      detail:`${WK[a.weekday-1]} ${a.start}-${a.end} vs ${b.start}-${b.end}，重叠于第 ${fmtWeeks(common).replace('周','')} 周`,
+      sug:`建议本周内核对教务系统原表:多为「选修撞必修」或单双周设置错误;补课请走调停课备案,并以教务公告为准。`,
+      w:w0, wd:a.weekday, jump:{tab:'week', w:w0}});
+  }
+
+  for(let i=0;i<cs.length-1;i++){
+    const a=cs[i], b=cs[i+1];
+    if(a.weekday!==b.weekday) continue;
+    if(!a.weeks.some(w=>b.weeks.includes(w))) continue;
+    const gap = hm(b.start) - hm(a.end);
+    if(gap < 0 || gap > 120) continue;
+    const need = travelMinutes(a.location, b.location) + CFG.buffer;
+    if(gap < need){
+      const w0 = a.weeks.find(w=>b.weeks.includes(w));
+      const leave = need - gap + 5;
+      const leaveTxt = String(Math.floor((hm(a.end)-leave)/60)).padStart(2,'0') + ':' + String((hm(a.end)-leave)%60).padStart(2,'0');
+      out.push({level:'travel', tag:'通勤风险', title:`${a.name} → ${b.name} 转场时间不足`,
+        detail:`${a.end} 从「${a.location}」下课，${b.start} 要赶到「${b.location}」，只有 ${gap} 分钟;估算需 ${need} 分钟`,
+        sug:`建议 ${a.end} 提前 ${leave} 分钟离开(约 ${leaveTxt} 出发);若赶不上,实验课建议先跟带教报备,理论课可坐后排听。`,
+        w:w0, wd:a.weekday, jump:{tab:'week', w:w0}});
+    }
+  }
+
+  cs.forEach(c=>{
+    const clash = c.weeks.filter(w => cfgExamWeeks.includes(w));
+    if(clash.length && c.kind !== '考试'){
+      out.push({level:'exam', tag:'考期提醒', title:`${c.name} 排到了考试周`,
+        detail:`第 ${fmtWeeks(clash).replace('周','')} 周本应是考试周,仍有排课`,
+        sug:'确认是补课/答疑还是周次填错;建议本周内向教务确认,第 17 周前查考试安排。',
+        w:clash[0], wd:c.weekday, jump:{tab:'week', w:clash[0]}});
+    }
+  });
+
+  /* 待办撞课:待办提醒时间落在某节课程上课时段内 */
+  dailyTasks.forEach(x=>{
+    if(x.done || !x.rmAt) return;
+    const d = new Date(x.rmAt);
+    const wk = weekOf(d), wd = isoWd(d);
+    if(isNaN(d.getTime())) return;
+    const mm = d.getHours()*60 + d.getMinutes();
+    courses.forEach(c=>{
+      if(c.weekday!==wd || !c.weeks.includes(wk)) return;
+      if(mm >= hm(c.start) && mm < hm(c.end)){
+        out.push({level:'todo', tag:'待办撞课', title:`待办「${x.text}」与「${c.name}」时间重叠`,
+          detail:`待办提醒 ${fmtTodoAt(d)} 落在 ${WK[wd-1]} ${c.start}-${c.end} 的上课时段内`,
+          sug:'建议把这件事安排到课后再做,或点进每日任务把提醒时间改到课前/课间空闲段。',
+          w:wk, wd:wd, jump:{tab:'daily', w:wk}});
+      }
+    });
+  });
+
+  const order = {hard:0, travel:1, exam:2, todo:3};
+
+  return out.sort((x,y)=> order[x.level]-order[y.level]);
+}
+
+/* ================= 艾宾浩斯 + 排程 ================= */
+function examLeft(){
+  const start = dateOfWeek(cfgExamWeeks[0], 1);
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((start - today) / 86400000);
+}
+const retention = (t, s=1) => Math.exp(-t / (2.2 * s));
+
+function buildTasks(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const boost = examLeft() <= 21 ? 1.5 : 1;
+  const list = [];
+  courses.forEach(c=>{
+    c.weeks.forEach(w=>{
+      const lesson = dateOfWeek(w, c.weekday);
+      const diff = Math.round((lesson - today) / 86400000);
+      if(diff > 0 || diff < -20) return;
+      EBB.forEach(r=>{
+        const due = addDays(lesson, r.d);
+        const dd = Math.round((due - today) / 86400000);
+        if(dd < 0 || dd > 14) return;
+        list.push({
+          id: c.name + '|' + ymd(due) + '|' + r.d,
+          course:c.name, topic:c.content || ('第'+w+'周内容'), due,
+          minutes: Math.round(r.m * (c.kind==='实验' ? 1.2 : 1) * boost),
+          round:r.d, method:r.method, priority: retention(r.d, STRENGTH[c.kind] || 1)
+        });
+      });
+    });
+  });
+  const map = new Map();
+  list.forEach(t=>{ if(!map.has(t.id)) map.set(t.id,t); });
+  return [...map.values()];
+}
+
+function freeSlots(d){
+  const wd = isoWd(d), wk = weekOf(d);
+  let spans = courses.filter(c=> c.weekday===wd && c.weeks.includes(wk))
+                    .map(c=>[hm(c.start), hm(c.end)]);
+  spans = spans.concat(CFG.meals).sort((a,b)=>a[0]-b[0]);
+  const merged = [];
+  spans.forEach(([s,e])=>{
+    if(merged.length && s <= merged[merged.length-1][1])
+      merged[merged.length-1][1] = Math.max(merged[merged.length-1][1], e);
+    else merged.push([s,e]);
+  });
+  const slots = []; let cur = CFG.dayStart;
+  merged.forEach(([s,e])=>{ if(s-cur >= 15) slots.push([cur,s]); cur = Math.max(cur,e); });
+  if(CFG.dayEnd - cur >= 15) slots.push([cur, CFG.dayEnd]);
+  return slots;
+}
+
+function planWeek(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const tasks = buildTasks().concat(customTasks()).sort((a,b)=> a.due-b.due || a.priority-b.priority);
+  const done = new Set(), plan = [];
+  const keyOf = t => t.course+'|'+t.topic+'|'+t.round;
+
+  for(let i=0;i<7;i++){
+    const d = addDays(today, i);
+    const due = tasks.filter(t=> t.due <= d && !done.has(keyOf(t)));
+    if(!due.length) continue;
+    let used = 0; const placed = [];
+    for(const [s,e] of freeSlots(d)){
+      if(used >= CFG.dayCap || !due.length) break;
+      let cur = s;
+      while(due.length && used < CFG.dayCap && e-cur >= 10){
+        const t = due.shift();
+        const need = Math.min(t.minutes, e-cur, CFG.dayCap-used);
+        placed.push({start:cur, end:cur+need, task:t});
+        cur += need + 5; used += need; done.add(keyOf(t));
+      }
+    }
+    if(placed.length) plan.push({date:d, items:placed});
+  }
+  return plan;
+}
+
+/* ================= 渲染:周视图 ================= */
+function renderStats(wk){
+  const list = courses.filter(c=> c.weeks.includes(wk));
+  const today = new Date();
+  const todayHours = weekOf(today)===wk
+    ? list.filter(c=> c.weekday===isoWd(today)).reduce((s,c)=> s + (hm(c.end)-hm(c.start))/60, 0)
+    : 0;
+  const todayCnt = list.filter(c=> weekOf(today)===wk && isoWd(today)===c.weekday).length;
+  const wdNow = isoWd(today);
+  const curMin = today.getHours()*60 + today.getMinutes();
+  const remainCnt = weekOf(today)===wk
+    ? list.filter(c=> c.weekday > wdNow || (c.weekday === wdNow && hm(c.start) > curMin)).length
+    : list.length;
+  const dExam = examLeft();
+  const warnExam = dExam > 0 && dExam <= 14;
+  document.getElementById('wkStats').innerHTML =
+    `<div class="st"><b>${remainCnt}</b><span>本周剩余课程</span></div>` +
+    `<div class="st"><b>${todayHours.toFixed(1)}</b><span>今日学时(h)</span></div>` +
+    `<div class="st${warnExam ? ' st-warn' : ''}"><b>${dExam}</b><span>距考试周(天)</span></div>` +
+    `<div class="st"><b>${todayCnt}</b><span>今天有课</span></div>`;
+}
+let examPlan = JSON.parse(localStorage.getItem('ms.examPlan') || '{}');
+const saveExamPlan = ()=> localStorage.setItem('ms.examPlan', JSON.stringify(examPlan));
+let examEditOn = false, examEditWk = 0, tempExamList = [];
+function examAutoList(wk){
+  const list = [];
+  courses.forEach(c=>{ if(c.weeks.includes(wk)) list.push({d:c.weekday, start:c.start, end:c.end, name:c.name}); });
+  return list;
+}
+function examStartEdit(wk){
+  examEditOn = true; examEditWk = wk;
+  tempExamList = (examPlan[wk] ? examPlan[wk].map(x=>({d:x.d,start:x.start,end:x.end,name:x.name})) : examAutoList(wk));
+  renderExamTip(wk);
+}
+function examCancelEdit(){ examEditOn = false; tempExamList = []; renderExamTip(examEditWk || CUR_WK); }
+function examAddRow(){
+  tempExamList.push({d:1, start:'08:00', end:'09:40', name:''});
+  renderExamTip(examEditWk);
+}
+function examDelRow(i){ tempExamList.splice(i, 1); renderExamTip(examEditWk); }
+function examSave(){
+  const list = [];
+  document.querySelectorAll('#examTip .ex-row').forEach(row=>{
+    const d = +row.querySelector('select').value;
+    const start = row.querySelector('[data-role=start]').value;
+    const end = row.querySelector('[data-role=end]').value;
+    const name = row.querySelector('[data-role=name]').value.trim();
+    if(name && start && end) list.push({d:d, start:start, end:end, name:name});
+  });
+  if(list.length) examPlan[examEditWk] = list; else delete examPlan[examEditWk];
+  saveExamPlan();
+  examEditOn = false; tempExamList = [];
+  renderExamTip(examEditWk);
+}
+function renderExamTip(wk){
+  const tip = document.getElementById('examTip');
+  if(!cfgExamWeeks.length){ tip.hidden = true; return; }
+  const inExam = cfgExamWeeks.includes(wk);
+  const dLeft = examLeft();
+  if(!inExam && (dLeft < 0 || dLeft > 21)){ tip.hidden = true; return; }
+  let body = '';
+  if(inExam){
+    if(examEditOn && examEditWk === wk){
+      const rows = tempExamList.map((x,i)=>
+        '<div class="ex-row">' +
+        '<select>' + WK.map((n,j)=> '<option value="' + (j+1) + '"' + (x.d===j+1?' selected':'') + '>' + n + '</option>').join('') + '</select>' +
+        '<input type="time" value="' + (x.start||'') + '" data-role="start">' +
+        '<input type="time" value="' + (x.end||'') + '" data-role="end">' +
+        '<input class="ex-nm" value="' + esc(x.name||'') + '" data-role="name" placeholder="考试科目">' +
+        '<span class="ex-del" onclick="examDelRow(' + i + ')">✕</span></div>').join('');
+      body =
+        '<div class="ex-head2">📝 第 ' + wk + ' 周考试安排<span class="ex-btn" onclick="examCancelEdit()">取消</span></div>' +
+        '<div class="ex-sub">修改时段/科目,删除多余的,保存后生效</div>' +
+        (rows || '<div class="ex-sub" style="margin-top:6px">暂无安排,点下方添加考试</div>') +
+        '<div class="ex-bar">' +
+        '<button class="btn" onclick="examAddRow()">➕ 添加考试</button>' +
+        '<button class="btn primary" onclick="examSave()">💾 保存</button></div>';
+    } else {
+      const list = examPlan[wk] || examAutoList(wk);
+      const dayHtml = WK.map((n,i)=>{
+        const wd = i + 1;
+        const l = list.filter(x=> x.d === wd);
+        if(!l.length) return '';
+        return '<div class="ex-day"><span class="ex-dn">' + n + '</span>' +
+          l.map(x=> '<span class="ex-it">' + x.start + '-' + x.end + ' ' + esc(x.name) + '</span>').join('') +
+          '</div>';
+      }).join('');
+      body =
+        '<div class="ex-head2">📝 本周是考试周(第 ' + wk + ' 周)' +
+        '<span class="ex-btn" onclick="examStartEdit(' + wk + ')">✏️ 调整考试时间</span></div>' +
+        '<div class="ex-sub">' + (examPlan[wk] ? '以下为你的自定义考试安排,提前到场、带好证件' : '按课表时段提醒:以下时段预计有考试,提前到场、带好证件,具体以教务通知为准') + '</div>' +
+        (dayHtml || '<div class="ex-sub" style="margin-top:6px">暂无考试安排,点右上角"调整考试时间"添加</div>');
+    }
+  } else {
+    body =
+      '<div class="ex-head">📝 距考试周还有 ' + dLeft + ' 天(第 ' + cfgExamWeeks[0] + ' 周起)</div>' +
+      '<div class="ex-sub">' + (dLeft <= 14 ? '考试临近!抓紧复习,提前备好证件与文具,具体安排可点右上角调整' : '考试周内每天按课表时段进行考试,建议提前规划复习节奏') + '</div>';
+  }
+  tip.hidden = false;
+  tip.className = 'examtip' + (!inExam && dLeft <= 14 ? ' ex-warn' : '');
+  tip.innerHTML = body;
+}
+
+function renderWeek(wk){
+  const H = CFG.dayEnd - CFG.dayStart;
+  const now = new Date();
+  const isCur = weekOf(now) === wk;
+  let html = '<div class="dhead tl"></div>';
+  WK.forEach((n,i)=>{
+    const wd = i+1;
+    const d = dateOfWeek(wk, wd);
+    const isToday = isCur && isoWd(now) === wd;
+    html += `<div class="dhead${isToday?' today':''}${wd>=6?' weekend':''}">
+      <span class="dn">${n}</span>
+      ${isToday ? '<i class="dot">今</i>' : `<span class="dd">${d.getMonth()+1}/${d.getDate()}</span>`}
+    </div>`;
+  });
+
+  html += '<div class="dbody axis" style="height:'+H+'px;background:transparent;border:0">';
+  for(let m = CFG.dayStart + 30 - (CFG.dayStart%60); m <= CFG.dayEnd; m += 120){
+    html += `<div class="tick" style="top:${m-CFG.dayStart}px">${mh(m)}</div>`;
+  }
+  html += '</div>';
+
+  for(let wd=1; wd<=7; wd++){
+    html += `<div class="dbody${isCur && isoWd(now)===wd ? ' today-col':''}" style="height:${H}px">`;
+    courses.forEach((c, idx)=>{
+      if(c.weekday!==wd || !c.weeks.includes(wk)) return;
+      const top = hm(c.start) - CFG.dayStart, h = hm(c.end) - hm(c.start);
+      const cls = c.kind==='实验' ? 'lab' : c.kind==='见习' ? 'clinic' : c.kind==='选修' ? 'elective' : '';
+      const short = clamp(h-10, 0, 999);
+      html += `<div class="ev ${cls}" style="top:${top}px;height:${h-3}px"
+        title="${esc(c.name)}｜${esc(c.location||'')}｜${esc(fmtWeeks(c.weeks))}${c.note?'｜备注:'+esc(c.note):''}"
+        onclick="openCourse(${idx})">
+        <b>${c.start}${c.credit ? `<span class="cr">${c.credit}学分</span>` : ''}</b><div class="nm">${esc(c.name)}</div>
+        ${short > 40 ? `<div class="lc">${esc(c.location||'')}</div>` : ''}
+        ${short > 40 && c.teacher ? `<div class="lc tc">${esc(c.teacher)}</div>` : ''}</div>`;
+    });
+    html += '</div>';
+  }
+  document.getElementById('weekGrid').innerHTML = html;
+  document.getElementById('subInfo').textContent =
+    `第 ${wk} 周 · 共 ${courses.length} 门课 · 开学首周 ${ymd(TERM_START)}`;
+  renderStats(wk); renderExamTip(wk);
+}
+
+/* ================= 课程详情 ================= */
+function openCourse(i){
+  const c = courses[i]; if(!c) return;
+  document.getElementById('cName').textContent = c.name;
+  document.getElementById('cMeta').innerHTML =
+    `<span class="tag">${esc(c.kind)}</span><span class="tag">${esc(fmtWeeks(c.weeks))}</span>` +
+    (c.credit ? `<span class="tag">${c.credit} 学分</span>` : '') +
+    (c.teacher ? `<span class="tag">${esc(c.teacher)}</span>` : '');
+  document.getElementById('cTime').textContent = WK[c.weekday-1] + ' ' + c.start + ' - ' + c.end;
+  document.getElementById('cLoc').textContent = c.location || '未填写地点';
+  const rmM = c.rmMin || 0;
+  if(rmM && rmM % 1440 === 0){ document.getElementById('rmMinEdit').value = rmM / 1440; setRmUnit('d'); }
+  else if(rmM && rmM % 60 === 0){ document.getElementById('rmMinEdit').value = rmM / 60; setRmUnit('h'); }
+  else { document.getElementById('rmMinEdit').value = rmM || ''; setRmUnit('min'); }
+  document.getElementById('rmTextEdit').value = c.rmText || '';
+  document.getElementById('cContentEdit').value = c.content || '';
+  document.getElementById('cNote').value = c.note || '';
+  document.getElementById('btnDelCourse').dataset.idx = i;
+  document.getElementById('courseModal').classList.add('on');
+}
+document.getElementById('btnSaveContent').onclick = ()=>{
+  const i = +document.getElementById('btnDelCourse').dataset.idx;
+  if(!courses[i]) return;
+  courses[i].content = document.getElementById('cContentEdit').value.trim();
+  save(); toast('内容已保存');
+  refresh();
+};
+document.getElementById('btnSaveRemind').onclick = ()=>{
+  const i = +document.getElementById('btnDelCourse').dataset.idx;
+  if(!courses[i]) return;
+  const v = Math.floor(+document.getElementById('rmMinEdit').value);
+  const u = curRmUnit;
+  const mins = u === 'd' ? v * 1440 : u === 'h' ? v * 60 : v;
+  courses[i].rmMin = mins > 0 ? Math.round(mins) : 0;
+  courses[i].rmText = document.getElementById('rmTextEdit').value.trim();
+  const un = u === 'd' ? '天' : u === 'h' ? '小时' : '分钟';
+  save(); toast(mins > 0 ? '已设置课前 ' + v + un + ' 横幅提醒' : '已关闭这节课的单独提醒');
+  refresh();
+};
+/* 提醒单位选择器(与周选择器同款样式) */
+let curRmUnit = 'min';
+const RMU_LABEL = {min:'分钟', h:'小时', d:'天'};
+function setRmUnit(u){
+  curRmUnit = u;
+  document.getElementById('rmUnitVal').textContent = RMU_LABEL[u];
+  const items = document.querySelectorAll('#rmUnitMenu .wk-it');
+  items.forEach(it=> it.classList.toggle('cur', it.getAttribute('data-u') === u));
+}
+document.getElementById('rmUnitTrigger').onclick = ()=>{
+  const box = document.getElementById('rmUnitBox');
+  const menu = document.getElementById('rmUnitMenu');
+  box.classList.toggle('open');
+  menu.hidden = !box.classList.contains('open');
+};
+document.querySelectorAll('#rmUnitMenu .wk-it').forEach(it=>{
+  it.onclick = ()=>{
+    setRmUnit(it.getAttribute('data-u'));
+    document.getElementById('rmUnitBox').classList.remove('open');
+    document.getElementById('rmUnitMenu').hidden = true;
+  };
+});
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#rmUnitBox')){
+    document.getElementById('rmUnitBox').classList.remove('open');
+    document.getElementById('rmUnitMenu').hidden = true;
+  }
+});
+document.getElementById('btnSaveNote').onclick = ()=>{
+  const i = +document.getElementById('btnDelCourse').dataset.idx;
+  if(!courses[i]) return;
+  courses[i].note = document.getElementById('cNote').value.trim();
+  save(); toast('备注已保存');
+  refresh();
+};
+document.getElementById('btnDelCourse').onclick = ()=>{
+  const i = +document.getElementById('btnDelCourse').dataset.idx;
+  if(!confirm('确定删除这门课?')) return;
+  courses.splice(i,1); save();
+  document.getElementById('courseModal').classList.remove('on');
+  refresh();
+};
+document.getElementById('btnCourseClose').onclick = ()=>
+  document.getElementById('courseModal').classList.remove('on');
+
+/* ================= 渲染:冲突 ================= */
+const CONF_ORDER = ['hard','travel','exam','todo','custom'];
+const CONF_META = {hard:['硬冲突','#e5484d'], travel:['通勤风险','#f76b15'], exam:['考期提醒','#8e4ec6'], todo:['待办撞课','#e5484d'], custom:['自定义','#3b82f6']};
+function loadConfCustom(){ return JSON.parse(localStorage.getItem('ms.confCustom') || '[]'); }
+function confCard(c, twk, twd){
+  const isToday = c.w === twk && c.wd === twd;
+  const jump = c.jump ? ` onclick="confJump('${c.jump.tab}',${c.jump.w})"` : '';
+  const k = encodeURIComponent(c.tag + '|' + c.title);
+  const xBtn = c.custom
+    ? `<span class="conf-x" title="删除这条" onclick="event.stopPropagation();delConfCustom(${c.id})">✕</span>`
+    : `<span class="conf-x" data-k="${k}" title="删除这条" onclick="event.stopPropagation();hideConf('${k}')">✕</span>`;
+  return `<div class="conf ${c.level}${isToday?' today':''}"${jump}>
+    ${xBtn}
+    <div class="t">${isToday?'<span class="badge-today">今天</span>':''}<span class="tag">${c.tag}</span>${esc(c.title)}</div>
+    <div class="d">${esc(c.detail)}</div>
+    <div class="s">👉 ${esc(c.sug)}</div>
+  </div>`;
+}
+function delConfCustom(id){
+  const arr = loadConfCustom().filter(x=> x.id !== id);
+  localStorage.setItem('ms.confCustom', JSON.stringify(arr));
+  toast('已删除该自定义冲突');
+  renderConflicts();
+}
+function renderConflicts(){
+  const hidden = JSON.parse(localStorage.getItem('ms.confHidden') || '[]');
+  const customList = loadConfCustom().map(x=>({
+    tag:'自定义', title:x.title, detail:x.detail || '', sug:'手动添加的冲突,如已完成可点 ✕ 删除',
+    level:'custom', id:x.id, custom:true
+  }));
+  const list = detectConflicts().filter(c=> !hidden.includes(c.tag + '|' + c.title)).concat(customList);
+  const box = document.getElementById('confList');
+  const now = new Date(), twk = weekOf(now), twd = isoWd(now);
+  const fold = JSON.parse(localStorage.getItem('ms.confFold') || '{}');
+  const grouped = {};
+  list.forEach(c=> (grouped[c.level] = grouped[c.level] || []).push(c));
+  let html = `<div class="conf-tools">
+    <button class="btn-mini" id="cfAdd" style="margin-left:auto">➕ 添加冲突</button>
+    <button class="btn-mini" id="cfHide">🗑 已删 ${hidden.length} 条</button></div>`;
+  if(!list.length){
+    html += hidden.length
+      ? `<div class="card empty">🎉 当前没有未隐藏的冲突 · 已删 ${hidden.length} 条</div>`
+      : '<div class="card empty">🎉 本周课程安排顺畅,暂未发现冲突</div>';
+  } else {
+    CONF_ORDER.forEach(lv=>{
+      const g = grouped[lv]; if(!g || !g.length) return;
+      g.sort((x,y)=> (x.w===twk&&x.wd===twd ? 0 : 1) - (y.w===twk&&y.wd===twd ? 0 : 1));
+      const meta = CONF_META[lv];
+      const isFold = !!fold[lv];
+      html += `<div class="conf-g">
+        <div class="conf-gh" data-lv="${lv}">
+          <span style="width:9px;height:9px;border-radius:3px;background:${meta[1]};display:inline-block"></span>${meta[0]}
+          <span class="n">${g.length} 条</span><span class="ar">${isFold ? '▶' : '▼'}</span></div>
+        <div class="conf-body"${isFold?' style="display:none"':''}>${g.map(c=>confCard(c,twk,twd)).join('')}</div>
+      </div>`;
+    });
+  }
+  box.innerHTML = html;
+  box.querySelectorAll('.conf-gh').forEach(h=>{
+    h.onclick = ()=>{
+      const lv = h.dataset.lv;
+      const f = JSON.parse(localStorage.getItem('ms.confFold') || '{}');
+      f[lv] = !f[lv]; localStorage.setItem('ms.confFold', JSON.stringify(f));
+      renderConflicts();
+    };
+  });
+  const fAll = document.getElementById('cfAll');
+  if(fAll) fAll.onclick = ()=>{ localStorage.setItem('ms.confFold','{}'); renderConflicts(); };
+  const fNone = document.getElementById('cfNone');
+  if(fNone) fNone.onclick = ()=>{ const o={}; CONF_ORDER.forEach(lv=>{ if(grouped[lv]) o[lv]=true; }); localStorage.setItem('ms.confFold', JSON.stringify(o)); renderConflicts(); };
+  const fAdd = document.getElementById('cfAdd');
+  if(fAdd) fAdd.onclick = ()=> document.getElementById('confAddModal').classList.add('on');
+  const fHide = document.getElementById('cfHide');
+  if(fHide) fHide.onclick = renderHideModal;
+}
+document.getElementById('cfAddOk').onclick = ()=>{
+  const t = document.getElementById('cfAddTitle').value.trim();
+  if(!t){ toast('请填写冲突标题'); return; }
+  const arr = loadConfCustom();
+  arr.push({id:Date.now(), title:t, detail:document.getElementById('cfAddDetail').value.trim()});
+  localStorage.setItem('ms.confCustom', JSON.stringify(arr));
+  document.getElementById('cfAddTitle').value = '';
+  document.getElementById('cfAddDetail').value = '';
+  document.getElementById('confAddModal').classList.remove('on');
+  toast('已添加自定义冲突');
+  renderConflicts();
+};
+document.getElementById('cfAddCancel').onclick = ()=>
+  document.getElementById('confAddModal').classList.remove('on');
+function confJump(tab, w){
+  const el = document.querySelector('.tab[data-t="' + tab + '"]');
+  if(el) el.click();
+  if(tab === 'week' && w && w !== CUR_WK){
+    CUR_WK = clampWeek(w);
+    renderWeek(CUR_WK); renderNav();
+  }
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+function hideConf(k){
+  const val = decodeURIComponent(k);
+  const arr = JSON.parse(localStorage.getItem('ms.confHidden') || '[]');
+  if(!arr.includes(val)) arr.push(val);
+  localStorage.setItem('ms.confHidden', JSON.stringify(arr));
+  renderConflicts();
+}
+function renderHideModal(){
+  const hidden = JSON.parse(localStorage.getItem('ms.confHidden') || '[]');
+  document.getElementById('confHideList').innerHTML = hidden.length
+    ? hidden.map((k,i)=>{
+        const idx = k.indexOf('|');
+        return `<div class="hi-item"><span class="tag">${esc(k.slice(0,idx))}</span>${esc(k.slice(idx+1))}
+          <button class="btn-mini" onclick="restoreConf(${i})">恢复</button></div>`;
+      }).join('')
+    : '<div style="color:var(--muted);font-size:12.5px;padding:8px 2px">暂无已删除的冲突</div>';
+  document.getElementById('confHideModal').classList.add('on');
+}
+function restoreConf(i){
+  const arr = JSON.parse(localStorage.getItem('ms.confHidden') || '[]');
+  arr.splice(i,1);
+  localStorage.setItem('ms.confHidden', JSON.stringify(arr));
+  renderHideModal(); renderConflicts();
+}
+function restoreAllConf(){
+  localStorage.setItem('ms.confHidden','[]');
+  renderHideModal(); renderConflicts();
+}
+document.getElementById('cfRestoreAll').onclick = restoreAllConf;
+document.getElementById('cfHideClose').onclick = ()=> document.getElementById('confHideModal').classList.remove('on');
+
+/* ================= 渲染:复习规划 ================= */
+function renderReview(){
+  const plan = planWeek();
+  const box = document.getElementById('revList');
+  const allCnt = plan.reduce((s,d)=> s + d.items.length, 0);
+  const doneCnt = plan.reduce((s,d)=> s + d.items.filter(it=> (reviewProg[it.task.id] || 0) >= 100).length, 0);
+  const head = document.getElementById('revHead');
+  const headBtns = `<span class="rev-head-btns">
+    <button class="btn-mini" onclick="openReviewAdd()">➕ 添加任务</button>
+    <button class="btn-mini" onclick="openReviewHis()">📜 历史</button></span>`;
+  if(head) head.innerHTML = (allCnt ? `本周复习 <b>${doneCnt}/${allCnt}</b> 已完成` : '暂无复习任务') + headBtns;
+  if(!allCnt){ box.innerHTML = '<div class="card empty">暂无待复习内容,先去上课吧</div>'; return; }
+  // 完成后自动从列表消失,只显示未完成(或未到 100%)的任务
+  const pending = plan
+    .map(day=>({date:day.date, items:day.items.filter(it=> (reviewProg[it.task.id] || 0) < 100)}))
+    .filter(d=> d.items.length);
+  if(!pending.length){
+    box.innerHTML = '<div class="card empty">🎉 本周复习任务已全部完成,辛苦啦</div>';
+    return;
+  }
+  const revCurWk = weekOf(new Date());
+  const revThisWk = pending.filter(d=> weekOf(d.date)===revCurWk);
+  const revOtherWk = pending.filter(d=> weekOf(d.date)!==revCurWk);
+  box.innerHTML = revThisWk.concat(revOtherWk).map(day=>{
+    const items = day.items.map(it=>{
+      const p = it.task.priority;
+      const col = p < .10 ? '#e5484d' : p < .45 ? '#f76b15' : '#0a9d5a';
+      const pct = reviewProg[it.task.id] || 0;
+      const photos = reviewPhotos[it.task.id] || [];
+      const thumbs = photos.map((pp,i)=>
+        `<img class="thumb" src="${pp.u}" alt="成果${i+1}" title="点击查看" ` +
+        `onclick="event.stopPropagation();showPhoto('${esc(it.task.id)}',${i})">`).join('');
+      const barW = pct > 0 ? pct : 2;
+      const pctCol = pct > 0 ? '#1e6fff' : 'var(--muted)';
+      return `<div class="item" onclick="openReview('${esc(it.task.id)}')">
+        <div class="h"><span><b>${mh(it.start)}-${mh(it.end)}</b>　${esc(it.task.course)}</span>
+          <span style="color:${pctCol};font-size:11.5px" title="完成度 ${pct}% · 点击修改">${pct}%</span></div>
+        <div class="m">${esc(it.task.topic)}${it.task.round > 0 ? ' · 第' + it.task.round + '天节点' : ''} · ${esc(it.task.method)}</div>
+        <div class="bar"><i style="width:${barW}%;background:${col}"></i></div>
+        <div class="rv-media">
+          ${thumbs ? '<div class="thumbs">'+thumbs+'</div>' : ''}
+          <button class="btn-mini" onclick="event.stopPropagation();addPhoto('${esc(it.task.id)}')">📷 添加成果</button>
+        </div>
+        <div class="rv-status">完成度 ${pct}% · 点击修改</div>
+      </div>`;
+    }).join('');
+    return `<div class="rev${weekOf(day.date)===revCurWk ? ' rev-thiswk' : ''}"><div class="date">📅 ${ymd(day.date)} ${WK[isoWd(day.date)-1]}（第${weekOf(day.date)}周）</div>${items}</div>`;
+  }).join('');
+}
+
+/* ================= 复习任务:自定义添加 ================= */
+function openReviewAdd(){
+  const el = document.getElementById('rvAddDate');
+  if(el) el.value = ymd(new Date());
+  document.getElementById('rvAddTitle').value = '';
+  document.getElementById('rvAddTopic').value = '';
+  document.getElementById('rvAddMethod').value = '';
+  document.getElementById('reviewAddModal').classList.add('on');
+}
+document.getElementById('rvAddSave').onclick = ()=>{
+  const title = document.getElementById('rvAddTitle').value.trim();
+  if(!title){ toast('请填写科目或标题'); return; }
+  const date = document.getElementById('rvAddDate').value || ymd(new Date());
+  const topic = document.getElementById('rvAddTopic').value.trim();
+  const method = document.getElementById('rvAddMethod').value.trim() || '自主复习';
+  reviewCustom.push({id:'c' + Date.now(), title, date, topic, method});
+  saveReviewCustom();
+  document.getElementById('reviewAddModal').classList.remove('on');
+  toast('已添加复习任务');
+  renderReview();
+};
+document.getElementById('rvAddCancel').onclick = ()=>
+  document.getElementById('reviewAddModal').classList.remove('on');
+function delReviewCustom(id){
+  reviewCustom = reviewCustom.filter(x=>x.id !== id);
+  saveReviewCustom();
+  toast('已删除自定义任务');
+  renderReview(); openReviewHis();
+}
+/* ================= 复习任务:历史 ================= */
+function openReviewHis(){
+  const all = buildTasks().concat(customTasks());
+  const doneMap = new Map(all.filter(t=>(reviewProg[t.id] || 0) >= 100).map(t=>[t.id,t]));
+  const hist = [...doneMap.values(), ...customTasks()];
+  const seen = new Set();
+  const list = hist.filter(t=>{ if(seen.has(t.id)) return false; seen.add(t.id); return true; })
+    .sort((a,b)=> b.due - a.due);
+  const box = document.getElementById('rvHisList');
+  box.innerHTML = list.length ? list.map(t=>{
+    const pct = reviewProg[t.id] || 0;
+    const done = pct >= 100;
+    return `<div class="hi-item" style="cursor:pointer" onclick="openReview('${esc(t.id)}')">
+      <span class="tag" style="${done ? 'background:#e8f7ef;color:#0a9d5a' : ''}">${done ? '✓ 已完成' : pct + '%'}</span>
+      <b>${esc(t.course)}</b>
+      <span style="color:var(--muted);font-size:11px">${esc(t.topic)} · ${ymd(t.due)}${t.custom ? ' · 自定义' : ''}</span>
+      ${t.custom ? `<button class="btn-mini" onclick="event.stopPropagation();delReviewCustom('${esc(t.id)}')">✕</button>` : ''}
+    </div>`;
+  }).join('') : '<div style="color:var(--muted);font-size:12.5px;padding:8px 2px">暂无历史任务</div>';
+  document.getElementById('reviewHisModal').classList.add('on');
+}
+document.getElementById('rvHisClose').onclick = ()=>
+  document.getElementById('reviewHisModal').classList.remove('on');
+
+/* ================= 复习任务:完成度 ================= */
+let curReviewTask = null;
+function openReview(id){
+  const task = buildTasks().concat(customTasks()).find(t=>t.id === id);
+  if(!task) return;
+  curReviewTask = task;
+  document.getElementById('rvName').textContent = task.course;
+  document.getElementById('rvMeta').textContent =
+    ymd(task.due) + ' ' + WK[isoWd(task.due)-1] + (task.round > 0 ? ' · 第' + task.round + '天节点' : '') + ' · ' + task.method;
+  const pct = reviewProg[task.id] || 0;
+  document.getElementById('rvRange').value = pct;
+  document.getElementById('rvPct').textContent = pct + '%';
+  document.getElementById('reviewModal').classList.add('on');
+}
+document.getElementById('rvRange').oninput = ()=>{
+  document.getElementById('rvPct').textContent = document.getElementById('rvRange').value + '%';
+};
+document.getElementById('btnRvReset').onclick = ()=>{
+  document.getElementById('rvRange').value = 0;
+  document.getElementById('rvPct').textContent = '0%';
+};
+document.getElementById('btnRvDone').onclick = ()=>{
+  document.getElementById('rvRange').value = 100;
+  document.getElementById('rvPct').textContent = '100%';
+};
+document.getElementById('btnRvSave').onclick = ()=>{
+  if(!curReviewTask) return;
+  const pct = +document.getElementById('rvRange').value;
+  reviewProg[curReviewTask.id] = pct;
+  saveReviewProg();
+  toast(pct >= 100 ? '复习任务已完成' : '完成度已保存');
+  document.getElementById('reviewModal').classList.remove('on');
+  renderReview(); renderDaily();
+};
+document.getElementById('btnRvClose').onclick = ()=>{
+  document.getElementById('reviewModal').classList.remove('on');
+  renderDaily();
+};
+
+/* ================= 复习成果:图片 ================= */
+function compressImage(file, cb){
+  const reader = new FileReader();
+  reader.onload = e=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if(w > MAX){ h = Math.round(h * MAX / w); w = MAX; }
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      cb(cv.toDataURL('image/jpeg', .72));
+    };
+    img.onerror = ()=> toast('这张图打不开,换一张试试');
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function addPhoto(id){
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = ()=>{
+    const f = inp.files[0];
+    if(!f) return;
+    compressImage(f, dataUrl=>{
+      if(!reviewPhotos[id]) reviewPhotos[id] = [];
+      reviewPhotos[id].push({u:dataUrl, at:Date.now()});
+      const n = reviewPhotos[id].length;
+      // 每传一张成果图,完成度 +50%,封顶 100%
+      reviewProg[id] = Math.min(100, (reviewProg[id]||0) + PHOTO_PCT);
+      try{ saveReviewPhotos(); saveReviewProg(); }
+      catch(err){
+        reviewPhotos[id].pop();
+        if(!reviewPhotos[id].length) delete reviewPhotos[id];
+        try{ saveReviewPhotos(); }catch(_){}
+        toast('图片太大存不下啦,换一张小点的试试');
+        return;
+      }
+      renderReview(); renderDaily();
+      celebrate(n);
+    });
+  };
+  inp.click();
+}
+const REWARD = [
+  '太棒了,今天也在进步!',
+  '成果已入库,知识在生长',
+  '复习打卡成功,坚持就是胜利',
+  '这一课又扎实了一点',
+  '好样的,学医的你闪闪发光',
+  '又离"下笔如有神"近了一步',
+  '每一次复习,都在给未来的自己铺路',
+  '知识点已入脑,谁也抢不走',
+  '保持这个节奏,考试周会感谢现在的你',
+  '医路漫长,但你每一步都算数',
+  '笔记越积越厚,焦虑越来越薄',
+  '今天的你,比昨天又强了一点',
+  '认真的人,运气和分数都会站在你这边',
+  '这份成果,值得一个掌声',
+  '厚积薄发,说的就是现在',
+  '复习有痕,进步有声',
+  '别小看这一张图,它是坚持的证据',
+  '好状态,继续保持'
+];
+let celebTimer = null;
+function celebrate(n){
+  const txt = REWARD[Math.floor(Math.random()*REWARD.length)];
+  document.getElementById('celTxt').textContent = txt;
+  document.getElementById('celGain').textContent = '完成度 +' + PHOTO_PCT + '%';
+  document.getElementById('celSub').textContent = '第 ' + n + ' 张成果 · 每张 +' + PHOTO_PCT + '%';
+  const card = document.querySelector('#celModal .sheet');
+  card.querySelectorAll('.cel-star').forEach(s=>s.remove());
+  const stars = ['✨','⭐','🌟','💪','📚','🧠'];
+  for(let i=0;i<6;i++){
+    const s = document.createElement('span');
+    s.className = 'cel-star';
+    s.textContent = stars[i%stars.length];
+    s.style.left = (10 + Math.random()*80) + '%';
+    s.style.top = '32%';
+    s.style.animationDelay = (i*0.16) + 's';
+    card.appendChild(s);
+  }
+  document.getElementById('celModal').classList.add('on');
+  clearTimeout(celebTimer);
+  celebTimer = setTimeout(()=> document.getElementById('celModal').classList.remove('on'), 3600);
+}
+document.getElementById('btnCelClose').onclick = ()=>{
+  clearTimeout(celebTimer);
+  document.getElementById('celModal').classList.remove('on');
+};
+let curPhotoKey = null, curPhotoIdx = -1;
+function showPhoto(id, idx){
+  const list = reviewPhotos[id] || [];
+  if(!list[idx]) return;
+  curPhotoKey = id; curPhotoIdx = idx;
+  document.getElementById('photoBig').src = list[idx].u;
+  document.getElementById('photoModal').classList.add('on');
+}
+document.getElementById('btnPhotoClose').onclick = ()=>
+  document.getElementById('photoModal').classList.remove('on');
+document.getElementById('btnPhotoDel').onclick = ()=>{
+  if(!curPhotoKey || curPhotoIdx < 0) return;
+  (reviewPhotos[curPhotoKey]||[]).splice(curPhotoIdx, 1);
+  if(!(reviewPhotos[curPhotoKey]||[]).length) delete reviewPhotos[curPhotoKey];
+  try{ saveReviewPhotos(); }catch(_){}
+  document.getElementById('photoModal').classList.remove('on');
+  toast('已删除这张图(完成度保持不变,可用滑块调整)');
+  renderReview(); renderDaily();
+};
+
+/* ================= 渲染:明日提醒 + 天气 ================= */
+const WMO = {0:['晴','☀️'],1:['多云','🌤'],2:['多云','⛅️'],3:['阴','☁️'],45:['雾','🌫'],48:['雾','🌫'],
+  51:['毛毛雨','🌦'],53:['小雨','🌦'],55:['中雨','🌧'],61:['小雨','🌦'],63:['中雨','🌧'],65:['大雨','🌧'],
+  71:['小雪','🌨'],73:['中雪','❄️'],80:['阵雨','🌦'],95:['雷阵雨','⛈']};
+
+async function fetchWeather(){
+  const g = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(CITY)}&count=1&language=zh&format=json`).then(r=>r.json());
+  if(!g.results || !g.results.length) throw new Error('找不到该城市');
+  const {latitude, longitude, name} = g.results[0];
+  const w = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
+    `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,precipitation,wind_speed_10m` +
+    `&daily=weather_code,temperature_2m_min,temperature_2m_max,precipitation_probability_max` +
+    `&timezone=Asia%2FShanghai&forecast_days=3`).then(r=>r.json());
+  const d = w.daily;
+  const c = w.current || {};
+  return {city:name, cur:{
+    t:c.temperature_2m, feels:c.apparent_temperature, hum:c.relative_humidity_2m,
+    code:c.weather_code, wind:c.wind_speed_10m, time:c.time}, days:d.time.map((t,i)=>({
+    date:t, code:d.weather_code[i], tmin:d.temperature_2m_min[i],
+    tmax:d.temperature_2m_max[i], pop:d.precipitation_probability_max[i]}))};
+}
+
+/* 雨天横幅提醒 */
+let rainOn = localStorage.getItem('ms.rainOn') === '1';
+const RAIN_CODES = new Set([51,53,55,56,57,61,63,65,66,67,80,81,82,95,96,99]);
+async function checkRainBanner(){
+  const banner = document.getElementById('rainBanner');
+  if(!banner || !rainOn){ if(banner) banner.hidden = true; return; }
+  const todayStr = ymd(new Date());
+  if(localStorage.getItem('ms.rainClosed') === todayStr){ banner.hidden = true; return; }
+  try{
+    const wx = await fetchWeather();
+    const today = wx.days.find(x=> x.date === todayStr) || wx.days[0];
+    if(!today) return;
+    const isRain = RAIN_CODES.has(today.code) || (today.pop || 0) >= 60;
+    if(!isRain){ banner.hidden = true; return; }
+    const [sky] = WMO[today.code] || ['有雨'];
+    document.getElementById('rainBannerText').textContent =
+      `☔ 今天有雨:${sky}${(today.pop||0) ? ',降水概率 ' + today.pop + '%' : ''},出门记得带伞`;
+    banner.hidden = false;
+  }catch(e){ banner.hidden = true; }
+}
+function closeRainBanner(){
+  localStorage.setItem('ms.rainClosed', ymd(new Date()));
+  document.getElementById('rainBanner').hidden = true;
+}
+
+async function renderTomorrow(){
+  const box = document.getElementById('tmrBox');
+  const tmr = addDays(new Date(), 1);
+  const wd = isoWd(tmr), wk = weekOf(tmr);
+  const list = courses.filter(c=> c.weekday===wd && c.weeks.includes(wk))
+                      .sort((a,b)=> hm(a.start)-hm(b.start));
+  box.innerHTML = '<div class="card empty">正在获取天气…</div>';
+
+  let wx = null, err = '';
+  try{ wx = await fetchWeather(); }catch(e){ err = e.message; }
+
+  let head = '';
+  if(!list.length){
+    head = '<div class="card empty">明天没有课,但复习任务还在 🐶</div>';
+  } else {
+    const c = list[0];
+    const wxd = wx ? (wx.days.find(x=>x.date===ymd(tmr)) || wx.days[0]) : null;
+    const now = wx && wx.cur ? wx.cur : null;
+    let nowLine = '';
+    if(now){
+      const [nsky, nicon] = WMO[now.code] || ['多云','⛅️'];
+      const nt = now.time ? new Date(now.time) : null;
+      const ntStr = nt ? String(nt.getHours()).padStart(2,'0') + ':' + String(nt.getMinutes()).padStart(2,'0') : '';
+      nowLine = `<div class="wx-now"><span>${nicon} ${nsky} · 现在</span>
+        <b>${Math.round(now.t)}℃</b> · 体感 ${Math.round(now.feels)}℃ · 湿度 ${Math.round(now.hum)}%` +
+        (now.wind >= 8 ? ` · 风速 ${Math.round(now.wind)}km/h` : '') +
+        (ntStr ? ` · ${ntStr} 更新` : '') + '</div>';
+    }
+    let todayLine = '';
+    if(wx){
+      const tday = wx.days.find(x=>x.date===ymd(new Date())) || wx.days[0];
+      if(tday){
+        const [tsky, ticon] = WMO[tday.code] || ['多云','⛅️'];
+        todayLine = `<div class="wx-now" style="margin-top:6px">${ticon} 今日 ${tsky} ${Math.round(tday.tmin)}~${Math.round(tday.tmax)}℃ · 降水概率 ${tday.pop}%</div>`;
+      }
+    }
+    if(wxd){
+      const [sky, icon] = WMO[wxd.code] || ['多云','⛅️'];
+      let walk = travelMinutes('宿舍', c.location) + CFG.buffer + 8;
+      const tips = [];
+      if(wxd.pop >= 50 || [61,63,65,80,95].includes(wxd.code)){ tips.push('带伞,路面湿滑'); walk += 3; }
+      if(wxd.tmin <= 3) tips.push('加厚外套,路上冷');
+      if(c.kind === '实验') tips.push('白大褂提前穿好,迟到超 10 分钟一般不让进');
+      head = `<div class="big">
+        <div class="k">实时天气 · ${wx ? esc(wx.city) : CITY}${wx ? ' · 已刷新' : ''}</div>
+        ${nowLine || '<div class="wx-now">天气获取失败:' + esc(err) + '</div>'}
+        ${todayLine}
+        <div class="k" style="margin-top:10px">明日第一节</div>
+        <div class="v">${esc(c.name)}</div>
+        <div class="k">${c.start} · ${esc(c.location)} · ${c.kind}</div>
+        <div class="w" style="margin-top:10px">
+          明天 ${icon}${sky} ${Math.round(wxd.tmin)}~${Math.round(wxd.tmax)}℃ · 降水概率 ${wxd.pop}%<br>
+          建议 <b>${mh(hm(c.start)-walk)}</b> 从宿舍出发(预留 ${walk} 分钟)<br>
+          ${tips.join(';') || '天气无特殊影响'}
+        </div></div>`;
+    } else {
+      head = `<div class="big"><div class="k">明日第一节</div><div class="v">${esc(c.name)}</div>
+        <div class="k">${c.start} · ${esc(c.location)}</div>
+        <div class="w" style="margin-top:10px">天气获取失败:${esc(err)}（其余功能正常）</div></div>`;
+    }
+  }
+
+  const rest = list.slice(1).map(c=>
+    `<div class="item"><div class="h"><span>${c.start}-${c.end}</span><span style="color:var(--muted)">${esc(c.location)}</span></div>
+     <div class="m">${esc(c.name)}</div></div>`).join('');
+
+  box.innerHTML = head + (rest ? '<div class="card"><h3>当天其他课程</h3>' + rest + '</div>' : '') +
+    `<div class="card"><h3>⚙️ 设置</h3>
+      <div class="hint">城市(用于天气)</div>
+      <input id="setCity" value="${esc(CITY)}">
+      <div class="hint">开学第一周的周一日期</div>
+      <input id="setTerm" value="${ymd(TERM_START)}" placeholder="2026-09-07">
+      <button class="btn" id="btnSaveCfg">保存</button>
+      <button class="btn ghost danger" id="btnWipe" style="margin-top:10px">🗑 删除当前课表</button>
+      <div class="hint">删除后课表为空,可直接导入新课表。</div>
+      <div class="hint" style="margin-top:10px">距考试周(第${cfgExamWeeks[0]}周)还有 <b>${examLeft()}</b> 天</div>
+      <div class="hint" style="margin-top:10px">上课提醒:${remindCfg && remindCfg.minutes ? '课前 <b>' + remindCfg.minutes + '</b> 分钟' : '未开启'}
+        <button class="btn ghost mini" id="btnRemindSet" style="margin-left:8px">${remindCfg && remindCfg.minutes ? '修改' : '开启'}</button></div>
+    </div>`;
+
+  document.getElementById('btnSaveCfg').onclick = ()=>{
+    const c = document.getElementById('setCity').value.trim();
+    const t = document.getElementById('setTerm').value.trim();
+    if(c){ CITY = c; localStorage.setItem('ms.city', c); }
+    if(/^\d{4}-\d{2}-\d{2}$/.test(t)){ TERM_START = new Date(t); localStorage.setItem('ms.term', t); }
+    refresh(); renderTomorrow();
+  };
+  document.getElementById('btnWipe').onclick = ()=>{
+    if(!courses.length){ toast('课表本来就是空的,可以直接导入新课表'); return; }
+    if(!confirm('确定删除全部课程?\n删除后课表为空,可导入新课表。')) return;
+    courses = []; save(); refresh(); renderTomorrow();
+    toast('课表已清空,可以导入新课表了');
+  };
+  const btnRemindSet = document.getElementById('btnRemindSet');
+  if(btnRemindSet) btnRemindSet.onclick = ()=>{
+    setRmMin((remindCfg && remindCfg.minutes) || 60);
+    document.getElementById('remindBar').style.display = 'flex';
+    window.scrollTo({top:0, behavior:'smooth'});
+  };
+}
+
+/* ================= 文本导入 ================= */
+function parseText(text){
+  const wdMap = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'日':7,'天':7};
+  const out = [];
+  text.split(/\r?\n/).forEach(line=>{
+    line = line.trim(); if(!line) return;
+    const m = line.match(/^(?:周|星期)([一二三四五六日天])\s+(\d{1,2}[:：]\d{2})\s*[-~—]\s*(\d{1,2}[:：]\d{2})\s+(.+)$/);
+    if(!m) return;
+    let rest = m[4], weeks = parseWeeks('1-16'), kind = '理论', location = '', teacher = '', note = '';
+    const tm = rest.match(/#\s*老师[:：]\s*(.+)$/);
+    if(tm){ teacher = tm[1].trim(); rest = rest.replace(tm[0], ''); }
+    const nm = rest.match(/#\s*备注[:：]\s*(.+?)(?=\s*#老师|$)/);
+    if(nm){ note = nm[1].trim(); rest = rest.replace(nm[0], ''); }
+    const wm = rest.match(/([\d,，、~\-]+)\s*周/);
+    if(wm){ weeks = parseWeeks(wm[1]); rest = rest.replace(wm[0], ''); }
+    const km = rest.match(/(实验|见习|选修|理论)\s*$/);
+    if(km){ kind = km[1]; rest = rest.replace(km[0], ''); }
+    const lm = rest.match(/@\s*(\S+)/);
+    if(lm){ location = lm[1]; rest = rest.replace(lm[0], ''); }
+    out.push({
+      name: rest.trim() || '未命名课程',
+      weekday: wdMap[m[1]],
+      start: m[2].replace('：',':'), end: m[3].replace('：',':'),
+      location, kind, weeks, content:'', credit:2, teacher, note
+    });
+  });
+  return out;
+}
+
+/* ================= 导出备份 ================= */
+function exportText(){
+  return courses.map(c=>{
+    const wd = WK[c.weekday-1] || '周一';
+    return `${wd} ${c.start}-${c.end} ${c.name}${c.location?' @'+c.location:''} ${fmtWeeks(c.weeks)} ${c.kind}` +
+      (c.note ? '  #备注:' + c.note : '') +
+      (c.teacher ? '  #老师:' + c.teacher : '');
+  }).join('\n');
+}
+document.getElementById('btnExport').onclick = ()=>{
+  const ta = document.getElementById('impText');
+  ta.readOnly = false; ta.value = exportText();
+  document.getElementById('btnCopy').hidden = false;
+  toast('已导出为文本,可复制保存');
+};
+document.getElementById('btnCopy').onclick = ()=>{
+  const ta = document.getElementById('impText');
+  const done = ()=> toast('已复制到剪贴板');
+  const fallback = ()=>{ ta.select(); try{ document.execCommand('copy'); done(); }catch(e){ toast('请手动复制'); } };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(done).catch(fallback);
+  } else fallback();
+};
+
+/* ================= 图片扫描导入(OCR) ================= */
+const OCR_SRC = {
+  workerPath: 'https://fastly.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+  corePath: 'https://fastly.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core-simd.wasm.js',
+  langPath: 'https://fastly.jsdelivr.net/gh/naptha/tessdata@gh-pages/4.0.0'
+};
+// 按需加载识别引擎:先 cdnjs,失败自动切 fastly
+const loadTesseract = ()=> new Promise((resolve, reject)=>{
+  if(typeof Tesseract !== 'undefined') return resolve();
+  const inject = (url, next)=>{
+    const s = document.createElement('script');
+    s.src = url; s.onload = next; s.onerror = next;
+    document.head.appendChild(s);
+  };
+  inject('https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js', ()=>{
+    if(typeof Tesseract !== 'undefined') return resolve();
+    inject('https://fastly.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js', ()=>{
+      if(typeof Tesseract !== 'undefined') resolve(); else reject(new Error('引擎加载失败'));
+    });
+  });
+});
+let ocrFile = null;
+
+const drop = document.getElementById('drop');
+const imgInput = document.getElementById('imgInput');
+const imgPrev = document.getElementById('imgPrev');
+const btnOcr = document.getElementById('btnOcr');
+const ocrProg = document.getElementById('ocrProg');
+const ocrPct = document.getElementById('ocrPct');
+
+drop.onclick = ()=> imgInput.click();
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = ()=> drop.classList.remove('over');
+drop.ondrop = e => {
+  e.preventDefault(); drop.classList.remove('over');
+  const f = e.dataTransfer.files && e.dataTransfer.files[0];
+  if(f && /^image\//.test(f.type)) setOcrFile(f); else toast('请拖入图片文件');
+};
+imgInput.onchange = ()=>{ if(imgInput.files[0]) setOcrFile(imgInput.files[0]); };
+
+function setOcrFile(f){
+  ocrFile = f;
+  const url = URL.createObjectURL(f);
+  imgPrev.onload = ()=> URL.revokeObjectURL(url);
+  imgPrev.src = url;
+  imgPrev.hidden = false;
+  btnOcr.hidden = false;
+  drop.style.display = 'none';
+}
+
+/* OCR 文本 → 规范课表文本(尽力整理,供用户校对) */
+function normLine(line){
+  const s = line.replace(/\s+/g,' ').trim();
+  if(!s) return '';
+  const wdm = s.match(/(?:周|星期)\s*([一二三四五六日天])/);
+  const tm = s.match(/(\d{1,2})[:：](\d{2})\s*[-~—–]\s*(\d{1,2})[:：](\d{2})/);
+  if(!wdm || !tm) return '';
+  const wkm = s.match(/(\d[\d,，、~\-—]*)\s*周/);
+  const km = s.match(/(实验|见习|选修|理论|实践)/);
+  const tokens = s.split(' ');
+  const LOC = /(楼|室|区|中心|馆|园|院|基地|校区|广场)/;
+  const loc = tokens.filter(t=> LOC.test(t)).join('');
+  const name = tokens.filter(t=> !LOC.test(t)
+      && !/(?:周|星期)[一二三四五六日天]/.test(t)
+      && !/^\d{1,2}[:：]\d{2}$/.test(t)
+      && !/^\d{1,2}[:：]\d{2}[-~—–]\d{1,2}[:：]\d{2}$/.test(t)
+      && !/^\d[\d,，、~\-—]*周$/.test(t)
+      && !/^(实验|见习|选修|理论|实践)$/.test(t)
+    ).join('');
+  if(!name) return '';
+  const wk = wkm ? wkm[1].trim() : '1-16';
+  const kind = km ? km[1] : '理论';
+  return `周${wdm[1]} ${tm[1]}:${tm[2]}-${tm[3]}:${tm[4]} ${name}${loc?' @'+loc:''} ${wk}周 ${kind}`;
+}
+
+function tidyOcr(raw, data){
+  const words = (data && data.words) || [];
+  if(words.length < 2) return raw.replace(/\n{3,}/g,'\n\n').trim();
+  const rows = [];
+  words.forEach(w=>{
+    if(!w.text || !w.text.trim()) return;
+    if(w.confidence != null && w.confidence < 20) return;
+    const cy = (w.bbox.y0 + w.bbox.y1) / 2;
+    let row = rows.find(r=> Math.abs(r.cy - cy) < 14);
+    if(!row){ row = {cy, words:[]}; rows.push(row); }
+    row.words.push(w);
+  });
+  rows.sort((a,b)=> a.cy - b.cy);
+  const lines = rows.map(r=>{
+    r.words.sort((a,b)=> a.bbox.x0 - b.bbox.x0);
+    return r.words.map(w=> w.text.trim()).join(' ');
+  }).filter(l=> l);
+  const norm = lines.map(normLine).filter(l=> l);
+  return norm.length ? norm.join('\n') : lines.join('\n');
+}
+
+btnOcr.onclick = async ()=>{
+  if(!ocrFile) return;
+  btnOcr.disabled = true;
+  try{ await loadTesseract(); }
+  catch(e){
+    btnOcr.disabled = false;
+    toast('识别引擎加载失败,请检查网络后重试,或改用粘贴文本');
+    return;
+  }
+  ocrProg.hidden = false; ocrPct.textContent = '0%';
+  try{
+    let res;
+    try{
+      res = await Tesseract.recognize(ocrFile, 'chi_sim', {
+        ...OCR_SRC,
+        logger: m => { if(m.status==='recognizing text' && m.progress != null) ocrPct.textContent = Math.round(m.progress*100)+'%'; }
+      });
+    }catch(e1){
+      // SIMD 不可用时回退到普通核心
+      res = await Tesseract.recognize(ocrFile, 'chi_sim', {
+        workerPath: OCR_SRC.workerPath,
+        corePath: 'https://fastly.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
+        langPath: OCR_SRC.langPath,
+        logger: m => { if(m.status==='recognizing text' && m.progress != null) ocrPct.textContent = Math.round(m.progress*100)+'%'; }
+      });
+    }
+    const raw = (res.data && res.data.text) || '';
+    const txt = tidyOcr(raw, res.data);
+    const ta = document.getElementById('impText');
+    ta.readOnly = false; ta.value = txt || raw;
+    document.getElementById('btnCopy').hidden = true;
+    toast(txt && txt !== raw ? '已识别并整理,请核对后导入' : '已识别,请检查修正后导入');
+  }catch(e){
+    toast('识别失败:' + ((e && e.message) || '请检查网络连接'));
+  }finally{
+    btnOcr.disabled = false; ocrProg.hidden = true;
+  }
+};
+
+/* ================= 事件与启动 ================= */
+function refresh(){ CUR_WK = clampWeek(CUR_WK); renderNav(); renderWeek(CUR_WK); renderConflicts(); renderReview(); renderMap(); }
+
+/* 功能管理:底部栏目显隐(课表始终保留) */
+let tabsCfg = JSON.parse(localStorage.getItem('ms.tabs') || '{"conf":true,"daily":true,"rev":true,"tmr":true,"map":true,"words":true,"anat":true}');
+const saveTabsCfg = ()=> localStorage.setItem('ms.tabs', JSON.stringify(tabsCfg));
+function applyTabs(){
+  document.querySelectorAll('.tab').forEach(t=>{
+    const k = t.dataset.t;
+    if(k === 'week') return;
+    t.style.display = (tabsCfg[k] === false) ? 'none' : '';
+  });
+  const cur = document.querySelector('.tab.on');
+  if(cur && cur.dataset.t !== 'week' && tabsCfg[cur.dataset.t] === false){
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+    document.querySelector('.tab[data-t="week"]').classList.add('on');
+    document.getElementById('p-week').classList.add('on');
+  }
+}
+
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick = ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on');
+    document.getElementById('p-'+t.dataset.t).classList.add('on');
+    if(t.dataset.t === 'tmr') renderTomorrow();
+    if(t.dataset.t === 'daily') renderDaily();
+    if(t.dataset.t === 'map') renderMap();
+    if(t.dataset.t === 'conf') renderConflicts();
+    if(t.dataset.t === 'words'){ renderWords(); renderGrammar(); }
+    if(t.dataset.t === 'anat') renderAnat();
+  };
+});
+applyTabs();
+/* 实时天气:每 20 分钟自动刷新一次(明日页打开时) */
+setInterval(()=>{
+  if(document.getElementById('p-tmr').classList.contains('on')) renderTomorrow();
+}, 20*60*1000);
+
+/* ================= 每日单词提问 ================= */
+/* 内置四六级核心词库:英文、音标、词性+中文释义 */
+const CET_WORDS = [
+  ['abandon','/əˈbændən/','v. 放弃;抛弃'],
+  ['abstract','/ˈæbstrækt/','adj. 抽象的 n. 摘要'],
+  ['accelerate','/əkˈseləreɪt/','v. 加速;促进'],
+  ['accommodate','/əˈkɒmədeɪt/','v. 容纳;为…提供住宿'],
+  ['accumulate','/əˈkjuːmjəleɪt/','v. 积累;堆积'],
+  ['accurate','/ˈækjərət/','adj. 准确的;精确的'],
+  ['acknowledge','/əkˈnɒlɪdʒ/','v. 承认;致谢'],
+  ['acquire','/əˈkwaɪə(r)/','v. 获得;学到'],
+  ['adequate','/ˈædɪkwət/','adj. 充足的;适当的'],
+  ['advocate','/ˈædvəkeɪt/','v. 提倡 n. 拥护者'],
+  ['anticipate','/ænˈtɪsɪpeɪt/','v. 预期;预料'],
+  ['apparent','/əˈpærənt/','adj. 明显的;表面上的'],
+  ['appeal','/əˈpiːl/','v./n. 呼吁;吸引力'],
+  ['appreciate','/əˈpriːʃieɪt/','v. 感激;欣赏;理解'],
+  ['approach','/əˈprəʊtʃ/','v. 接近 n. 方法;途径'],
+  ['appropriate','/əˈprəʊpriət/','adj. 适当的;恰当的'],
+  ['arbitrary','/ˈɑːbɪtrəri/','adj. 任意的;武断的'],
+  ['arise','/əˈraɪz/','v. 出现;产生'],
+  ['assess','/əˈses/','v. 评估;评定'],
+  ['assign','/əˈsaɪn/','v. 分配;指派'],
+  ['assume','/əˈsjuːm/','v. 假定;承担'],
+  ['available','/əˈveɪləbl/','adj. 可获得的;有空的'],
+  ['barrier','/ˈbæriə(r)/','n. 障碍;屏障'],
+  ['beneficial','/ˌbenɪˈfɪʃl/','adj. 有益的;有利的'],
+  ['boundary','/ˈbaʊndri/','n. 边界;界限'],
+  ['brief','/briːf/','adj. 简短的 v. 简要介绍'],
+  ['capable','/ˈkeɪpəbl/','adj. 有能力的;能干的'],
+  ['capture','/ˈkæptʃə(r)/','v. 捕获;引起(注意)'],
+  ['category','/ˈkætəɡəri/','n. 类别;种类'],
+  ['cautious','/ˈkɔːʃəs/','adj. 谨慎的;小心的'],
+  ['challenge','/ˈtʃælɪndʒ/','n./v. 挑战;质疑'],
+  ['characteristic','/ˌkærəktəˈrɪstɪk/','n. 特征 adj. 典型的'],
+  ['circumstance','/ˈsɜːkəmstəns/','n. 环境;情况'],
+  ['coincide','/ˌkəʊɪnˈsaɪd/','v. 同时发生;一致'],
+  ['collapse','/kəˈlæps/','v./n. 倒塌;崩溃'],
+  ['commitment','/kəˈmɪtmənt/','n. 承诺;投入'],
+  ['compensate','/ˈkɒmpenseɪt/','v. 补偿;弥补'],
+  ['competent','/ˈkɒmpɪtənt/','adj. 有能力的;胜任的'],
+  ['comprehensive','/ˌkɒmprɪˈhensɪv/','adj. 全面的;综合的'],
+  ['conceal','/kənˈsiːl/','v. 隐藏;隐瞒'],
+  ['concentrate','/ˈkɒnsntreɪt/','v. 集中;专心'],
+  ['concept','/ˈkɒnsept/','n. 概念;观念'],
+  ['conclude','/kənˈkluːd/','v. 得出结论;结束'],
+  ['confident','/ˈkɒnfɪdənt/','adj. 自信的;有把握的'],
+  ['conflict','/ˈkɒnflɪkt/','n. 冲突 v. 抵触'],
+  ['consequence','/ˈkɒnsɪkwəns/','n. 结果;后果'],
+  ['considerable','/kənˈsɪdərəbl/','adj. 相当大的;可观的'],
+  ['consistent','/kənˈsɪstənt/','adj. 一致的;始终如一的'],
+  ['constitute','/ˈkɒnstɪtjuːt/','v. 构成;组成'],
+  ['contemporary','/kənˈtemprəri/','adj. 当代的;同时代的'],
+  ['contrast','/ˈkɒntrɑːst/','n./v. 对比;反差'],
+  ['controversial','/ˌkɒntrəˈvɜːʃl/','adj. 有争议的'],
+  ['convey','/kənˈveɪ/','v. 传达;运送'],
+  ['cooperate','/kəʊˈɒpəreɪt/','v. 合作;协作'],
+  ['crucial','/ˈkruːʃl/','adj. 至关重要的'],
+  ['cultivate','/ˈkʌltɪveɪt/','v. 培养;耕作'],
+  ['decline','/dɪˈklaɪn/','v. 下降;谢绝 n. 衰退'],
+  ['dedicate','/ˈdedɪkeɪt/','v. 献身;致力于'],
+  ['deficiency','/dɪˈfɪʃnsi/','n. 缺乏;不足'],
+  ['deliberate','/dɪˈlɪbərət/','adj. 故意的;深思熟虑的'],
+  ['demonstrate','/ˈdemənstreɪt/','v. 证明;演示'],
+  ['depress','/dɪˈpres/','v. 使沮丧;使萧条'],
+  ['derive','/dɪˈraɪv/','v. 获得;源自'],
+  ['deserve','/dɪˈzɜːv/','v. 应得;值得'],
+  ['distinguish','/dɪˈstɪŋɡwɪʃ/','v. 区分;辨别'],
+  ['dominate','/ˈdɒmɪneɪt/','v. 支配;占主导地位'],
+  ['efficient','/ɪˈfɪʃnt/','adj. 高效的;有效率的'],
+  ['eliminate','/ɪˈlɪmɪneɪt/','v. 消除;淘汰'],
+  ['emerge','/ɪˈmɜːdʒ/','v. 出现;浮现'],
+  ['emphasis','/ˈemfəsɪs/','n. 强调;重点'],
+  ['encounter','/ɪnˈkaʊntə(r)/','v./n. 遭遇;偶遇'],
+  ['enhance','/ɪnˈhɑːns/','v. 提高;增强'],
+  ['entitle','/ɪnˈtaɪtl/','v. 使有资格;给…命名'],
+  ['essential','/ɪˈsenʃl/','adj. 必要的;本质的'],
+  ['evaluate','/ɪˈvæljueɪt/','v. 评价;评估'],
+  ['evident','/ˈevɪdənt/','adj. 明显的;显然的'],
+  ['exaggerate','/ɪɡˈzædʒəreɪt/','v. 夸大;夸张'],
+  ['exceed','/ɪkˈsiːd/','v. 超过;超出'],
+  ['exhaust','/ɪɡˈzɔːst/','v. 使筋疲力尽;耗尽'],
+  ['expand','/ɪkˈspænd/','v. 扩大;扩展'],
+  ['exploit','/ɪkˈsplɔɪt/','v. 利用;开发;剥削'],
+  ['facilitate','/fəˈsɪlɪteɪt/','v. 促进;使便利'],
+  ['feasible','/ˈfiːzəbl/','adj. 可行的;行得通的'],
+  ['fluctuate','/ˈflʌktʃueɪt/','v. 波动;起伏'],
+  ['fundamental','/ˌfʌndəˈmentl/','adj. 基本的;根本的'],
+  ['generate','/ˈdʒenəreɪt/','v. 产生;引起'],
+  ['guarantee','/ˌɡærənˈtiː/','v./n. 保证;担保'],
+  ['identical','/aɪˈdentɪkl/','adj. 完全相同的;同一的'],
+  ['ignore','/ɪɡˈnɔː(r)/','v. 忽视;不理睬'],
+  ['impact','/ˈɪmpækt/','n./v. 影响;冲击'],
+  ['implement','/ˈɪmplɪment/','v. 实施;执行'],
+  ['imply','/ɪmˈplaɪ/','v. 暗示;意味着'],
+  ['inevitable','/ɪnˈevɪtəbl/','adj. 不可避免的'],
+  ['inherit','/ɪnˈherɪt/','v. 继承;遗传'],
+  ['initiate','/ɪˈnɪʃieɪt/','v. 开始;发起'],
+  ['insight','/ˈɪnsaɪt/','n. 洞察力;深刻见解'],
+  ['inspire','/ɪnˈspaɪə(r)/','v. 鼓舞;激发'],
+  ['integrate','/ˈɪntɪɡreɪt/','v. 整合;融入'],
+  ['intense','/ɪnˈtens/','adj. 强烈的;紧张的'],
+  ['interpret','/ɪnˈtɜːprɪt/','v. 解释;口译'],
+  ['justify','/ˈdʒʌstɪfaɪ/','v. 证明…有理;为…辩护'],
+  ['maintain','/meɪnˈteɪn/','v. 维持;保养;坚持'],
+  ['manipulate','/məˈnɪpjuleɪt/','v. 操纵;控制'],
+  ['moderate','/ˈmɒdərət/','adj. 适度的;温和的'],
+  ['neglect','/nɪˈɡlekt/','v./n. 忽视;疏忽'],
+  ['notion','/ˈnəʊʃn/','n. 概念;想法'],
+  ['objective','/əbˈdʒektɪv/','n. 目标 adj. 客观的'],
+  ['obligation','/ˌɒblɪˈɡeɪʃn/','n. 义务;责任'],
+  ['occur','/əˈkɜː(r)/','v. 发生;出现'],
+  ['perceive','/pəˈsiːv/','v. 察觉;认为'],
+  ['permanent','/ˈpɜːmənənt/','adj. 永久的;长期的'],
+  ['perspective','/pəˈspektɪv/','n. 观点;视角'],
+  ['phenomenon','/fəˈnɒmɪnən/','n. 现象;非凡的人或事物'],
+  ['portion','/ˈpɔːʃn/','n. 部分;一份'],
+  ['preserve','/prɪˈzɜːv/','v. 保护;保存'],
+  ['priority','/praɪˈɒrəti/','n. 优先事项;优先权'],
+  ['proceed','/prəˈsiːd/','v. 继续进行;前进'],
+  ['prominent','/ˈprɒmɪnənt/','adj. 突出的;著名的'],
+  ['proportion','/prəˈpɔːʃn/','n. 比例;部分'],
+  ['pursue','/pəˈsjuː/','v. 追求;从事'],
+  ['random','/ˈrændəm/','adj. 随机的;任意的'],
+  ['reinforce','/ˌriːɪnˈfɔːs/','v. 加强;强化'],
+  ['relevant','/ˈreləvənt/','adj. 相关的;切题的'],
+  ['reluctant','/rɪˈlʌktənt/','adj. 不情愿的;勉强的'],
+  ['resemble','/rɪˈzembl/','v. 像;类似于'],
+  ['reserve','/rɪˈzɜːv/','v. 预订;保留 n. 储备'],
+  ['resign','/rɪˈzaɪn/','v. 辞职;放弃'],
+  ['resume','/rɪˈzjuːm/','v. 重新开始 n. 简历'],
+  ['reveal','/rɪˈviːl/','v. 揭示;透露'],
+  ['sacrifice','/ˈsækrɪfaɪs/','v./n. 牺牲;献祭'],
+  ['scenario','/səˈnɑːriəʊ/','n. 情景;设想'],
+  ['significant','/sɪɡˈnɪfɪkənt/','adj. 重要的;显著的'],
+  ['sophisticated','/səˈfɪstɪkeɪtɪd/','adj. 复杂的;精密的'],
+  ['specify','/ˈspesɪfaɪ/','v. 明确说明;指定'],
+  ['sufficient','/səˈfɪʃnt/','adj. 足够的;充分的'],
+  ['sustain','/səˈsteɪn/','v. 维持;支撑'],
+  ['temporary','/ˈtemprəri/','adj. 临时的;暂时的'],
+  ['tendency','/ˈtendənsi/','n. 趋势;倾向'],
+  ['transform','/trænsˈfɔːm/','v. 转变;改造'],
+  ['undergo','/ˌʌndəˈɡəʊ/','v. 经历;遭受'],
+  ['unique','/juˈniːk/','adj. 独特的;唯一的'],
+  ['verify','/ˈverɪfaɪ/','v. 核实;验证'],
+  ['vital','/ˈvaɪtl/','adj. 至关重要的;有活力的'],
+  ['vulnerable','/ˈvʌlnərəbl/','adj. 脆弱的;易受伤的'],
+  ['absorb','/əbˈzɔːb/','v. 吸收;使专心'],
+  ['accompany','/əˈkʌmpəni/','v. 陪伴;伴随'],
+  ['accomplish','/əˈkʌmplɪʃ/','v. 完成;实现'],
+  ['achieve','/əˈtʃiːv/','v. 实现;达到'],
+  ['adapt','/əˈdæpt/','v. 适应;改编'],
+  ['adjust','/əˈdʒʌst/','v. 调整;适应'],
+  ['adopt','/əˈdɒpt/','v. 采纳;收养'],
+  ['advance','/ədˈvɑːns/','v. 前进;推进'],
+  ['adventure','/ədˈventʃə(r)/','n. 冒险;奇遇'],
+  ['aggressive','/əˈɡresɪv/','adj. 好斗的;进取的'],
+  ['allocate','/ˈæləkeɪt/','v. 分配;拨给'],
+  ['alter','/ˈɔːltə(r)/','v. 改变;修改'],
+  ['alternative','/ɔːlˈtɜːnətɪv/','adj. 备选的 n. 替代方案'],
+  ['ambition','/æmˈbɪʃn/','n. 雄心;抱负'],
+  ['amaze','/əˈmeɪz/','v. 使惊奇'],
+  ['analyze','/ˈænəlaɪz/','v. 分析'],
+  ['announce','/əˈnaʊns/','v. 宣布;声称'],
+  ['annual','/ˈænjuəl/','adj. 每年的 n. 年刊'],
+  ['anxiety','/æŋˈzaɪəti/','n. 焦虑;忧虑'],
+  ['apply','/əˈplaɪ/','v. 申请;应用'],
+  ['appoint','/əˈpɔɪnt/','v. 任命;约定'],
+  ['approve','/əˈpruːv/','v. 批准;赞成'],
+  ['arrange','/əˈreɪndʒ/','v. 安排;整理'],
+  ['assist','/əˈsɪst/','v. 协助;帮助'],
+  ['associate','/əˈsəʊʃieɪt/','v. 联想;交往 n. 同事'],
+  ['attach','/əˈtætʃ/','v. 附上;系上'],
+  ['attempt','/əˈtempt/','v./n. 尝试;企图'],
+  ['attend','/əˈtend/','v. 出席;参加'],
+  ['attitude','/ˈætɪtjuːd/','n. 态度;看法'],
+  ['attract','/əˈtrækt/','v. 吸引'],
+  ['authority','/ɔːˈθɒrəti/','n. 权威;当局'],
+  ['aware','/əˈweə(r)/','adj. 意识到的;知道的'],
+  ['balance','/ˈbæləns/','n./v. 平衡;余额'],
+  ['behave','/bɪˈheɪv/','v. 表现;举止'],
+  ['belief','/bɪˈliːf/','n. 信念;信仰'],
+  ['betray','/bɪˈtreɪ/','v. 背叛;泄露'],
+  ['boast','/bəʊst/','v. 吹嘘;自夸'],
+  ['bother','/ˈbɒðə(r)/','v. 打扰;费心'],
+  ['bounce','/baʊns/','v. 弹跳;反弹'],
+  ['budget','/ˈbʌdʒɪt/','n. 预算'],
+  ['calculate','/ˈkælkjuleɪt/','v. 计算;估计'],
+  ['campaign','/kæmˈpeɪn/','n. 运动;战役'],
+  ['cancel','/ˈkænsl/','v. 取消;撤销'],
+  ['candidate','/ˈkændɪdət/','n. 候选人;应试者'],
+  ['capacity','/kəˈpæsəti/','n. 容量;能力'],
+  ['career','/kəˈrɪə(r)/','n. 职业;生涯'],
+  ['casual','/ˈkæʒuəl/','adj. 随便的;偶然的'],
+  ['celebrate','/ˈselɪbreɪt/','v. 庆祝'],
+  ['ceremony','/ˈserəməni/','n. 仪式;典礼'],
+  ['certain','/ˈsɜːtn/','adj. 确定的;某些'],
+  ['charge','/tʃɑːdʒ/','v. 收费;充电 n. 费用'],
+  ['claim','/kleɪm/','v. 声称;索取 n. 索赔'],
+  ['clarify','/ˈklærəfaɪ/','v. 澄清;阐明'],
+  ['climate','/ˈklaɪmət/','n. 气候'],
+  ['combine','/kəmˈbaɪn/','v. 结合;联合'],
+  ['comment','/ˈkɒment/','n./v. 评论;意见'],
+  ['commercial','/kəˈmɜːʃl/','adj. 商业的 n. 广告'],
+  ['committee','/kəˈmɪti/','n. 委员会'],
+  ['communicate','/kəˈmjuːnɪkeɪt/','v. 交流;沟通'],
+  ['community','/kəˈmjuːnəti/','n. 社区;团体'],
+  ['compare','/kəmˈpeə(r)/','v. 比较;相比'],
+  ['compete','/kəmˈpiːt/','v. 竞争;比赛'],
+  ['complain','/kəmˈpleɪn/','v. 抱怨;投诉'],
+  ['complex','/ˈkɒmpleks/','adj. 复杂的 n. 综合体'],
+  ['component','/kəmˈpəʊnənt/','n. 组成部分;部件'],
+  ['compose','/kəmˈpəʊz/','v. 组成;作曲'],
+  ['compromise','/ˈkɒmprəmaɪz/','n./v. 妥协;折中'],
+  ['conduct','/kənˈdʌkt/','v. 进行;指挥 n. 行为'],
+  ['confirm','/kənˈfɜːm/','v. 确认;证实'],
+  ['connect','/kəˈnekt/','v. 连接;联系'],
+  ['consider','/kənˈsɪdə(r)/','v. 考虑;认为'],
+  ['constant','/ˈkɒnstənt/','adj. 不断的;恒定的'],
+  ['construct','/kənˈstrʌkt/','v. 建造;构建'],
+  ['consume','/kənˈsjuːm/','v. 消耗;消费'],
+  ['contact','/ˈkɒntækt/','n./v. 联系;接触'],
+  ['contain','/kənˈteɪn/','v. 包含;容纳'],
+  ['context','/ˈkɒntekst/','n. 上下文;背景'],
+  ['contribute','/kənˈtrɪbjuːt/','v. 贡献;促成'],
+  ['convince','/kənˈvɪns/','v. 使信服;说服'],
+  ['courage','/ˈkʌrɪdʒ/','n. 勇气;胆量']
+];
+const CET4_WORDS = CET_WORDS;   /* 四级词库(默认) */
+/* 六级高频词库:英文、音标、词性+中文释义 */
+const CET6_WORDS = [
+  ['abrupt','/əˈbrʌpt/','adj. 突然的;唐突的'],
+  ['absurd','/əbˈsɜːd/','adj. 荒谬的;可笑的'],
+  ['abundant','/əˈbʌndənt/','adj. 丰富的;充裕的'],
+  ['aggravate','/ˈæɡrəveɪt/','v. 加重;使恶化'],
+  ['alleviate','/əˈliːvieɪt/','v. 减轻;缓解'],
+  ['ambiguous','/æmˈbɪɡjuəs/','adj. 模棱两可的;含糊的'],
+  ['ambitious','/æmˈbɪʃəs/','adj. 有野心的;雄心勃勃的'],
+  ['anonymous','/əˈnɒnɪməs/','adj. 匿名的;无名的'],
+  ['apparatus','/ˌæpəˈreɪtəs/','n. 仪器;设备;机构'],
+  ['aptitude','/ˈæptɪtjuːd/','n. 天资;才能'],
+  ['authentic','/ɔːˈθentɪk/','adj. 真实的;可信的'],
+  ['bewilder','/bɪˈwɪldə(r)/','v. 使迷惑;使不知所措'],
+  ['bias','/ˈbaɪəs/','n./v. 偏见;偏向'],
+  ['blunder','/ˈblʌndə(r)/','n. 大错 v. 犯大错'],
+  ['boost','/buːst/','v./n. 促进;提升;推动'],
+  ['bureaucracy','/bjʊəˈrɒkrəsi/','n. 官僚机构;官僚主义'],
+  ['bypass','/ˈbaɪpɑːs/','v. 绕过 n. 旁路'],
+  ['catastrophe','/kəˈtæstrəfi/','n. 大灾难;灾祸'],
+  ['cease','/siːs/','v. 停止;终止'],
+  ['coherent','/kəʊˈhɪərənt/','adj. 连贯的;条理清楚的'],
+  ['collaborate','/kəˈlæbəreɪt/','v. 合作;协作'],
+  ['compatible','/kəmˈpætəbl/','adj. 兼容的;相容的'],
+  ['compel','/kəmˈpel/','v. 强迫;迫使'],
+  ['complement','/ˈkɒmplɪment/','n./v. 补充;补足'],
+  ['comply','/kəmˈplaɪ/','v. 遵守;顺从'],
+  ['conceive','/kənˈsiːv/','v. 构想;设想;怀孕'],
+  ['condemn','/kənˈdem/','v. 谴责;判刑'],
+  ['confront','/kənˈfrʌnt/','v. 面对;对抗'],
+  ['consensus','/kənˈsensəs/','n. 共识;一致意见'],
+  ['conspicuous','/kənˈspɪkjuəs/','adj. 显眼的;显著的'],
+  ['contaminate','/kənˈtæmɪneɪt/','v. 污染;弄脏'],
+  ['contemplate','/ˈkɒntəmpleɪt/','v. 深思;考虑'],
+  ['contempt','/kənˈtempt/','n. 轻视;蔑视'],
+  ['criterion','/kraɪˈtɪəriən/','n. 标准;准则'],
+  ['cynical','/ˈsɪnɪkl/','adj. 愤世嫉俗的;怀疑的'],
+  ['deteriorate','/dɪˈtɪəriəreɪt/','v. 恶化;变坏'],
+  ['dilemma','/dɪˈlemə/','n. 困境;进退两难'],
+  ['diminish','/dɪˈmɪnɪʃ/','v. 减少;减弱'],
+  ['discriminate','/dɪˈskrɪmɪneɪt/','v. 歧视;区分'],
+  ['disrupt','/dɪsˈrʌpt/','v. 扰乱;使中断'],
+  ['diverse','/daɪˈvɜːs/','adj. 多样的;不同的'],
+  ['doctrine','/ˈdɒktrɪn/','n. 教义;主义;学说'],
+  ['dubious','/ˈdjuːbiəs/','adj. 可疑的;半信半疑的'],
+  ['eccentric','/ɪkˈsentrɪk/','adj. 古怪的 n. 怪人'],
+  ['elaborate','/ɪˈlæbərət/','adj. 精心制作的 v. 详述'],
+  ['eloquent','/ˈeləkwənt/','adj. 雄辩的;有说服力的'],
+  ['embark','/ɪmˈbɑːk/','v. 着手;开始(事业等)'],
+  ['empirical','/ɪmˈpɪrɪkl/','adj. 以经验为依据的;实证的'],
+  ['endorse','/ɪnˈdɔːs/','v. 赞同;背书;代言'],
+  ['enthusiastic','/ɪnˌθjuːziˈæstɪk/','adj. 热情的;热心的'],
+  ['epidemic','/ˌepɪˈdemɪk/','n. 流行病 adj. 流行性的'],
+  ['erode','/ɪˈrəʊd/','v. 侵蚀;腐蚀'],
+  ['evoke','/ɪˈvəʊk/','v. 唤起;引起(回忆等)'],
+  ['expire','/ɪkˈspaɪə(r)/','v. 到期;失效;去世'],
+  ['explicit','/ɪkˈsplɪsɪt/','adj. 明确的;清楚的'],
+  ['fabricate','/ˈfæbrɪkeɪt/','v. 捏造;制造'],
+  ['feasibility','/ˌfiːzəˈbɪləti/','n. 可行性;可能性'],
+  ['foster','/ˈfɒstə(r)/','v. 培养;促进;收养'],
+  ['fragile','/ˈfrædʒaɪl/','adj. 脆弱的;易碎的'],
+  ['friction','/ˈfrɪkʃn/','n. 摩擦;冲突'],
+  ['genuine','/ˈdʒenjuɪn/','adj. 真正的;真诚的'],
+  ['hamper','/ˈhæmpə(r)/','v. 妨碍;阻碍'],
+  ['hierarchy','/ˈhaɪərɑːki/','n. 等级制度;层级'],
+  ['hypothesis','/haɪˈpɒθəsɪs/','n. 假设;假说'],
+  ['imminent','/ˈɪmɪnənt/','adj. 即将发生的;迫近的'],
+  ['impartial','/ɪmˈpɑːʃl/','adj. 公正的;不偏不倚的'],
+  ['impulse','/ˈɪmpʌls/','n. 冲动;脉冲'],
+  ['incentive','/ɪnˈsentɪv/','n. 激励;刺激'],
+  ['indignant','/ɪnˈdɪɡnənt/','adj. 愤慨的;义愤的'],
+  ['inevitable','/ɪnˈevɪtəbl/','adj. 不可避免的;必然的'],
+  ['infrastructure','/ˈɪnfrəstrʌktʃə(r)/','n. 基础设施'],
+  ['inherent','/ɪnˈhɪərənt/','adj. 固有的;内在的'],
+  ['integrity','/ɪnˈteɡrəti/','n. 正直;完整'],
+  ['intricate','/ˈɪntrɪkət/','adj. 错综复杂的;精细的'],
+  ['intuition','/ˌɪntjuˈɪʃn/','n. 直觉;直觉力'],
+  ['legitimate','/lɪˈdʒɪtɪmət/','adj. 合法的;正当的'],
+  ['linger','/ˈlɪŋɡə(r)/','v. 逗留;徘徊;继续存留'],
+  ['magnify','/ˈmæɡnɪfaɪ/','v. 放大;夸大'],
+  ['manifest','/ˈmænɪfest/','adj. 明显的 v. 表明'],
+  ['mediate','/ˈmiːdieɪt/','v. 调解;斡旋'],
+  ['meticulous','/məˈtɪkjələs/','adj. 一丝不苟的;细致的'],
+  ['monopoly','/məˈnɒpəli/','n. 垄断;专卖权'],
+  ['motive','/ˈməʊtɪv/','n. 动机;目的'],
+  ['notorious','/nəʊˈtɔːriəs/','adj. 臭名昭著的'],
+  ['obscure','/əbˈskjʊə(r)/','adj. 模糊的;晦涩的'],
+  ['optimize','/ˈɒptɪmaɪz/','v. 优化;使最优化'],
+  ['paradox','/ˈpærədɒks/','n. 悖论;矛盾的事物'],
+  ['patron','/ˈpeɪtrən/','n. 赞助人;老主顾'],
+  ['plausible','/ˈplɔːzəbl/','adj. 貌似合理的;可信的'],
+  ['preliminary','/prɪˈlɪmɪnəri/','adj. 初步的;预备的'],
+  ['presume','/prɪˈzjuːm/','v. 假定;推测'],
+  ['probe','/prəʊb/','v./n. 探查;调查'],
+  ['profound','/prəˈfaʊnd/','adj. 深刻的;深远的'],
+  ['quantitative','/ˈkwɒntɪtətɪv/','adj. 定量的;数量的'],
+  ['rational','/ˈræʃnəl/','adj. 理性的;合理的'],
+  ['reconcile','/ˈrekənsaɪl/','v. 调和;和解'],
+  ['redundant','/rɪˈdʌndənt/','adj. 多余的;被裁减的'],
+  ['refute','/rɪˈfjuːt/','v. 驳斥;反驳'],
+  ['remedy','/ˈremədi/','n./v. 补救;治疗'],
+  ['rigorous','/ˈrɪɡərəs/','adj. 严格的;严谨的'],
+  ['scrutiny','/ˈskruːtəni/','n. 仔细审查;监督'],
+  ['simultaneous','/ˌsɪmlˈteɪniəs/','adj. 同时发生的'],
+  ['spontaneous','/spɒnˈteɪniəs/','adj. 自发的;自然的'],
+  ['stimulate','/ˈstɪmjuleɪt/','v. 刺激;激励'],
+  ['subordinate','/səˈbɔːdɪnət/','adj. 从属的 n. 下属'],
+  ['subsidy','/ˈsʌbsədi/','n. 补贴;津贴'],
+  ['subtle','/ˈsʌtl/','adj. 微妙的;巧妙的'],
+  ['surpass','/səˈpɑːs/','v. 超过;胜过'],
+  ['suspicious','/səˈspɪʃəs/','adj. 可疑的;猜疑的'],
+  ['synthesis','/ˈsɪnθəsɪs/','n. 综合;合成'],
+  ['tackle','/ˈtækl/','v. 处理;解决 n. 用具'],
+  ['tempt','/tempt/','v. 引诱;诱惑'],
+  ['transition','/trænˈzɪʃn/','n. 过渡;转变'],
+  ['triumph','/ˈtraɪʌmf/','n./v. 胜利;凯旋'],
+  ['uphold','/ʌpˈhəʊld/','v. 支持;维护'],
+  ['versatile','/ˈvɜːsətaɪl/','adj. 多才多艺的;通用的'],
+  ['veto','/ˈviːtəʊ/','n./v. 否决;禁止'],
+  ['witness','/ˈwɪtnəs/','n. 目击者 v. 目睹'],
+  ['zeal','/ziːl/','n. 热情;狂热'],
+  ['amend','/əˈmend/','v. 修改;修正'],
+  ['arrogant','/ˈærəɡənt/','adj. 傲慢的;自大的'],
+  ['ascend','/əˈsend/','v. 上升;攀登'],
+  ['aspire','/əˈspaɪə(r)/','v. 渴望;立志'],
+  ['bleak','/bliːk/','adj. 荒凉的;黯淡的'],
+  ['blend','/blend/','v. 混合 n. 混合物'],
+  ['blunt','/blʌnt/','adj. 钝的;直率的'],
+  ['breach','/briːtʃ/','n./v. 违反;破坏'],
+  ['bribe','/braɪb/','v./n. 贿赂'],
+  ['cherish','/ˈtʃerɪʃ/','v. 珍爱;怀有'],
+  ['chronic','/ˈkrɒnɪk/','adj. 慢性的;长期的'],
+  ['cling','/klɪŋ/','v. 紧抓;依恋'],
+  ['coarse','/kɔːs/','adj. 粗糙的;粗俗的'],
+  ['commemorate','/kəˈmeməreɪt/','v. 纪念;庆祝'],
+  ['compile','/kəmˈpaɪl/','v. 汇编;编纂'],
+  ['compulsory','/kəmˈpʌlsəri/','adj. 强制性的;必修的'],
+  ['confer','/kənˈfɜː(r)/','v. 授予;商讨'],
+  ['confidential','/ˌkɒnfɪˈdenʃl/','adj. 机密的;保密的'],
+  ['conform','/kənˈfɔːm/','v. 遵守;符合'],
+  ['console','/kənˈsəʊl/','v. 安慰;慰藉'],
+  ['contend','/kənˈtend/','v. 主张;竞争'],
+  ['corrupt','/kəˈrʌpt/','adj. 腐败的 v. 腐蚀'],
+  ['counterpart','/ˈkaʊntəpɑːt/','n. 对应的人或物'],
+  ['courtesy','/ˈkɜːtəsi/','n. 礼貌;殷勤'],
+  ['curb','/kɜːb/','v./n. 抑制;约束'],
+  ['dazzle','/ˈdæzl/','v. 使目眩;使赞叹'],
+  ['decay','/dɪˈkeɪ/','v./n. 腐烂;衰退'],
+  ['deceive','/dɪˈsiːv/','v. 欺骗;蒙蔽'],
+  ['defect','/ˈdiːfekt/','n. 缺陷;缺点'],
+  ['defy','/dɪˈfaɪ/','v. 违抗;蔑视'],
+  ['depict','/dɪˈpɪkt/','v. 描绘;描写'],
+  ['deprive','/dɪˈpraɪv/','v. 剥夺;使丧失'],
+  ['desperate','/ˈdespərət/','adj. 绝望的;拼命的'],
+  ['despise','/dɪˈspaɪz/','v. 鄙视;看不起'],
+  ['deviate','/ˈdiːvieɪt/','v. 偏离;背离'],
+  ['diligent','/ˈdɪlɪdʒənt/','adj. 勤奋的;勤勉的'],
+  ['dim','/dɪm/','adj. 昏暗的;模糊的'],
+  ['discard','/dɪˈskɑːd/','v. 丢弃;抛弃'],
+  ['disclose','/dɪsˈkləʊz/','v. 揭露;透露'],
+  ['discreet','/dɪˈskriːt/','adj. 谨慎的;慎重的'],
+  ['distort','/dɪˈstɔːt/','v. 扭曲;歪曲'],
+  ['distract','/dɪˈstrækt/','v. 使分心;转移注意力'],
+  ['divert','/daɪˈvɜːt/','v. 转移;使转向'],
+  ['drastic','/ˈdræstɪk/','adj. 激烈的;极端的'],
+  ['dwell','/dwel/','v. 居住;细想'],
+  ['dynamic','/daɪˈnæmɪk/','adj. 动态的;有活力的'],
+  ['eager','/ˈiːɡə(r)/','adj. 渴望的;热切的'],
+  ['earnest','/ˈɜːnɪst/','adj. 认真的;诚挚的'],
+  ['eclipse','/ɪˈklɪps/','n. 日食;月食 v. 使失色'],
+  ['elicit','/ɪˈlɪsɪt/','v. 引出;探出'],
+  ['eligible','/ˈelɪdʒəbl/','adj. 合格的;有资格的'],
+  ['embody','/ɪmˈbɒdi/','v. 体现;包含'],
+  ['emit','/ɪˈmɪt/','v. 发出;排放'],
+  ['enact','/ɪˈnækt/','v. 颁布;制定(法律)'],
+  ['endeavor','/ɪnˈdevə(r)/','v./n. 努力;尽力'],
+  ['enrich','/ɪnˈrɪtʃ/','v. 使丰富;充实'],
+  ['enroll','/ɪnˈrəʊl/','v. 注册;入学'],
+  ['escalate','/ˈeskəleɪt/','v. 升级;加剧'],
+  ['escort','/ˈeskɔːt/','n./v. 护送;陪同'],
+  ['esteem','/ɪˈstiːm/','n./v. 尊重;敬重']
+];
+let wdCount = +(localStorage.getItem('ms.wordCount') || 10);
+let wdLv = localStorage.getItem('ms.wordLv') || 'cet4';
+const WD_LV_NAME = {cet4:'四级', cet6:'六级', mix:'混合'};
+let wdBatch = JSON.parse(localStorage.getItem('ms.wdBatch') || '{"d":"","n":0}');
+const saveWdBatch = ()=> localStorage.setItem('ms.wdBatch', JSON.stringify(wdBatch));
+function wdBatchN(){
+  const today = ymd(new Date());
+  if(wdBatch.d !== today){ wdBatch.d = today; wdBatch.n = 0; saveWdBatch(); }
+  return wdBatch.n;
+}
+function wdHash(s){
+  let h = 0;
+  for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) >>> 0; }
+  return h;
+}
+function wdBank(){ return wdLv === 'cet6' ? CET6_WORDS : wdLv === 'mix' ? CET4_WORDS.concat(CET6_WORDS) : CET4_WORDS; }
+function wordsOfDay(){
+  const arr = wdBank().slice();
+  let seed = wdHash(wdLv + '-' + ymd(new Date()) + '-' + wdBatchN());
+  for(let i = arr.length - 1; i > 0; i--){
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    const j = seed % (i + 1);
+    const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+  }
+  return arr.slice(0, wdCount);
+}
+let wdDone = JSON.parse(localStorage.getItem('ms.wordDone') || '{}');
+function wdKey(today){ return wdLv + '-' + today; }
+function saveWdDone(){ localStorage.setItem('ms.wordDone', JSON.stringify(wdDone)); }
+function renderWords(){
+  const today = ymd(new Date());
+  const k = wdKey(today);
+  if(!wdDone[k]) wdDone[k] = [];
+  saveWdDone();
+  document.getElementById('wdDate').textContent = '今日(' + today + ') · ' + WD_LV_NAME[wdLv] + ' · ' + wdCount + ' 个单词';
+  document.getElementById('wdReviewN').textContent = wdReviewedAll().length;
+  document.querySelectorAll('.wd-lv').forEach(b=> b.classList.toggle('on', b.dataset.lv === wdLv));
+  document.querySelectorAll('.wd-n').forEach(b=> b.classList.toggle('on', +b.dataset.n === wdCount));
+  const list = wordsOfDay();
+  const done = wdDone[k];
+  const box = document.getElementById('wdList');
+  box.innerHTML = list.map((w, i)=>{
+    const isDone = done.includes(w[0]);
+    return `<div class="wd-item${isDone ? ' done' : ''}" data-w="${esc(w[0])}" onclick="wdTap(this,'${esc(w[0])}')">
+      <div class="wd-en"><b>${esc(w[0])}</b><i>${esc(w[1])}</i></div>
+      <div class="wd-meaning">${esc(w[2])}</div>
+      <button class="wd-btn">${isDone ? '✓ 记住了' : '记住了?'}</button>
+    </div>`;
+  }).join('');
+  document.getElementById('wdBar').style.width = list.length ? Math.round(done.filter(d=> list.some(w=> w[0]===d)).length / list.length * 100) + '%' : '0%';
+}
+function wdTap(el, w){
+  const today = ymd(new Date());
+  const k = wdKey(today);
+  if(el.classList.contains('done')){        /* 取消记住 */
+    el.classList.remove('done');
+    wdDone[k] = wdDone[k].filter(x=> x !== w);
+    saveWdDone();
+    el.querySelector('.wd-btn').textContent = '记住了?';
+    el.classList.add('show');
+  } else if(el.classList.contains('show')){ /* 已展开 → 标记记住 */
+    el.classList.add('done');
+    if(!wdDone[k].includes(w)) wdDone[k].push(w);
+    saveWdDone();
+    el.querySelector('.wd-btn').textContent = '✓ 记住了';
+  } else {                                  /* 首次点击 → 展开释义 */
+    el.classList.add('show');
+  }
+  const list = wordsOfDay();
+  const done = wdDone[k];
+  document.getElementById('wdBar').style.width = list.length ? Math.round(done.filter(d=> list.some(x=> x[0]===d)).length / list.length * 100) + '%' : '0%';
+  document.getElementById('wdReviewN').textContent = wdReviewedAll().length;
+}
+document.querySelectorAll('.wd-n').forEach(b=>{
+  b.onclick = ()=>{
+    wdCount = +b.dataset.n;
+    localStorage.setItem('ms.wordCount', wdCount);
+    renderWords();
+  };
+});
+document.querySelectorAll('.wd-lv').forEach(b=>{
+  b.onclick = ()=>{
+    wdLv = b.dataset.lv;
+    localStorage.setItem('ms.wordLv', wdLv);
+    renderWords();
+  };
+});
+document.getElementById('wdRefresh').onclick = ()=>{
+  const today = ymd(new Date());
+  if(wdBatch.d !== today) wdBatch.d = today, wdBatch.n = 0;
+  wdBatch.n++;
+  saveWdBatch();
+  renderWords();
+};
+/* 已刷清单(跨天累计已记住的单词) */
+function wdReviewedAll(){
+  const arr = [];
+  Object.keys(wdDone).forEach(k=>{
+    (wdDone[k]||[]).forEach(w=>{ if(!arr.includes(w)) arr.push(w); });
+  });
+  return arr;
+}
+function wdLookup(w){
+  const all = CET4_WORDS.concat(CET6_WORDS);
+  const f = all.filter(x=> x[0]===w)[0];
+  return f || [w, '', ''];
+}
+document.getElementById('wdReviewBtn').onclick = ()=>{
+  const box = document.getElementById('wdReview');
+  const btn = document.getElementById('wdReviewBtn');
+  if(!box.hidden){ box.hidden = true; btn.classList.remove('on'); return; }
+  const arr = wdReviewedAll();
+  box.innerHTML = arr.length ? arr.map(w=>{
+    const it = wdLookup(w);
+    return `<div class="rv-it"><b>${esc(it[0])}</b><i>${esc(it[2])}</i></div>`;
+  }).join('') : '<div class="hint">还没有已记住的单词</div>';
+  box.hidden = false;
+  btn.classList.add('on');
+};
+/* ================= 每日高级语法 ================= */
+const GRAMMAR_LESSONS = [
+  ['虚拟语气·与现在相反','if 从句用过去时(be 用 were),主句用 would/could/might + 动词原形','If I were you, I would apply for that job.','如果我是你,我就会申请那份工作。'],
+  ['虚拟语气·与过去相反','if 从句用过去完成时,主句用 would/could + have done','If he had studied harder, he would have passed the exam.','如果他当初学习更努力,他就能通过考试了。'],
+  ['虚拟语气·与将来相反','if 从句用 were to / should + 动词原形,主句用 would + 动词原形','If it were to rain tomorrow, the match would be cancelled.','万一明天下雨,比赛就会被取消。'],
+  ['含蓄虚拟(without/but for)','用介词短语代替 if 从句,主句仍用虚拟形式','Without your help, we could not have finished the project.','没有你的帮助,我们不可能完成这个项目。'],
+  ['wish 从句时态','与现在相反用过去时;与过去相反用过去完成时;与将来相反用 would/could + 动词原形','I wish I knew the answer to that question.','我真希望我知道那个问题的答案。'],
+  ['would rather 后接从句','用虚拟过去时,表示宁愿某人做某事','I would rather you came tomorrow than today.','我宁愿你明天来,而不是今天来。'],
+  ['if only 感叹','表示"要是…就好了",用法同 wish 从句','If only I had listened to your advice!','要是当初我听你的劝告就好了!'],
+  ['建议/要求类动词+虚拟','suggest/insist/order/demand 等后接 that 从句,谓语用 should + 动词原形(should 可省略)','The doctor suggested that she (should) take a rest.','医生建议她休息一下。'],
+  ['It is + 形容词 + that 虚拟','important/necessary/essential 等后用 that + should + 动词原形','It is essential that everyone (should) attend the meeting.','每个人都必须参加会议,这一点至关重要。'],
+  ['时间错综虚拟','从句与主句时间不一致时,各自按实际时间选用虚拟时态','If he had told me earlier, I would be free now.','如果他早一点告诉我,我现在就有空了。'],
+  ['全部倒装(方位副词开头)','here/there/away/up 等方位词置于句首,主语是名词时全部倒装','Here comes the school bus.','校车来了。'],
+  ['部分倒装(否定词开头)','never/not only/hardly/seldom 等置于句首,助动词提前','Never have I seen such a beautiful sunset.','我从未见过这么美丽的日落。'],
+  ['only + 状语倒装','only 修饰状语(副词/介词短语/状语从句)置于句首时主句部分倒装','Only by working hard can you achieve your goal.','只有努力工作,你才能实现目标。'],
+  ['not only…but also 倒装','not only 置于句首时前一分句部分倒装,后一分句不倒装','Not only did he finish his work, but he also helped others.','他不仅完成了自己的工作,还帮助了别人。'],
+  ['so/such 提前倒装','so + adj + be + 主语,或 so + 助动词 + 主语 表示"也一样"','So frightened was she that she couldn\'t say a word.','她吓得一句话也说不出来。'],
+  ['强调句 It is…that','强调除谓语外的任何成分,结构 It is/was + 被强调部分 + that + 其余','It was in the library that I met him yesterday.','我昨天是在图书馆遇见他的。'],
+  ['强调句与定语从句区别','强调句去掉 It is…that 后句子仍完整;定语从句不能去掉','It was the book that I bought yesterday.','昨天我买的就是这本书。'],
+  ['定语从句·关系代词','which/that 指物,who/whom 指人,在从句中作主语或宾语','The woman who is standing there is our teacher.','站在那里的那位女士是我们的老师。'],
+  ['定语从句·介词+which','关系代词作介词宾语时,介词可前置于 which/whom','This is the book about which we talked.','这就是我们谈论过的那本书。'],
+  ['定语从句·非限制性','非限制性定从用逗号隔开,不能用 that,关系词不可省略','Tom, who is my classmate, won the first prize.','汤姆是我的同学,他获得了一等奖。'],
+  ['as 引导非限制定从','as 可指代整个主句,常译"正如",可置于句首','As is known to all, the earth is round.','众所周知,地球是圆的。'],
+  ['such…as / the same…as','such/the same 后接 as 引导定从,表示"像…那样的/和…相同的"','I have never seen such a film as you described.','我从未看过像你描述的那样的电影。'],
+  ['名词性从句·主语从句','that 引导主语从句不充当成分,可用 it 作形式主语','That he will come is certain.','他会来,这一点是确定的。'],
+  ['名词性从句·whether 与 if','主语从句、介词后只用 whether,宾语从句二者皆可','Whether we go or not depends on the weather.','我们去不去取决于天气。'],
+  ['名词性从句·同位语从句','同位语从句说明抽象名词(fact/news/idea 等)的具体内容','The news that our team won made us excited.','我们队获胜的消息让我们很兴奋。'],
+  ['状语从句·时间','when/while/as 表同时,after/before 表先后,until 表直到','While I was reading, the phone rang.','我正在看书时,电话响了。'],
+  ['状语从句·条件','if/unless/provided that 表条件,unless = if…not','You will fail unless you work hard.','除非你努力学习,否则你会不及格。'],
+  ['状语从句·让步','although/even if/while 表让步,although 不与 but 连用','Although he is young, he knows a lot.','尽管他年轻,他知道的却很多。'],
+  ['状语从句·目的与结果','so that/in order that 表目的;so…that/such…that 表结果','He got up early so that he could catch the train.','他起得很早,以便能赶上火车。'],
+  ['状语从句省略','从句主语与主句一致且含 be 时,可省略主语和 be','While (I was) walking in the park, I saw an old friend.','在公园散步时,我遇见了一位老朋友。'],
+  ['独立主格结构','名词/代词 + 分词/形容词/介词短语,在句中作状语','The work done, we went home.','工作完成后,我们就回家了。'],
+  ['非谓语·动名词作主语','动名词作主语表示经常性动作,谓语用单数','Reading English every day is good for you.','每天读英语对你有好处。'],
+  ['非谓语·不定式表目的','to do 作目的状语,可转换为 in order to / so as to','He studies hard to pass the exam.','他努力学习是为了通过考试。'],
+  ['非谓语·分词作状语','现在分词表主动进行,过去分词表被动完成','Seen from the top, the city looks beautiful.','从山顶看,这座城市很美。'],
+  ['非谓语·悬垂分词','分词逻辑主语须与句子主语一致,否则属错误用法','Looking out of the window, the street is quiet.','(误)从窗外望去,街道很安静。'],
+  ['使役结构','have/make/let + 宾语 + do(主动);have/get + 宾语 + done(被动)','I had my bike repaired yesterday.','我昨天让人修了我的自行车。'],
+  ['感官动词+宾语补足语','see/watch/hear + 宾语 + do(全过程)/doing(正在进行)/done(被动)','I saw him crossing the street just now.','刚才我看见他正在过马路。'],
+  ['被动语态·特殊形式','情态动词 + be done;be going to be done;被动中保留 to','The work must be finished on time.','这项工作必须按时完成。'],
+  ['时态·现在完成进行时','have/has been doing,表示从过去开始一直持续到现在的动作','She has been teaching in this school for ten years.','她已经在这所学校教了十年书了。'],
+  ['时态·将来多种表达','will do / be going to do / be to do / 现在进行表安排','The train leaves at 8 o\'clock tomorrow morning.','火车明天早上八点发车。'],
+  ['时态呼应','主句过去时,从句一般用相应的过去时态(客观真理除外)','He said he had finished his homework.','他说他已经做完作业了。'],
+  ['主谓一致·就近原则','neither…nor / either…or / not only…but also 连接时,谓语与最近的主语一致','Either you or he is wrong.','要么是你错了,要么是他错了。'],
+  ['主谓一致·集合名词','family/class/team 强调整体用单数,强调成员用复数','The class are having a discussion now.','全班同学现在正在讨论。'],
+  ['比较结构·倍数表达','倍数 + as + 原级 + as / 倍数 + 比较级 + than','This room is three times as large as that one.','这个房间是那个房间的三倍大。'],
+  ['比较结构·the more…the more','"越…越…",两分句都用比较级开头','The harder you work, the greater progress you will make.','你越努力,取得的进步就越大。'],
+  ['比较级修饰词','much/far/a lot/even 等可修饰比较级加强程度','This book is far more interesting than that one.','这本书比那本有趣得多。'],
+  ['情态动词+have done','must have done 表对过去的肯定推测;can\'t have done 表否定推测;may have done 表可能','He must have missed the train yesterday.','他昨天一定是错过了火车。'],
+  ['情态动词·need/dare','作情态动词多用于否定和疑问;作实义动词后接 to do','You needn\'t worry about it.','你没必要为此担心。'],
+  ['反意疑问句·特殊','祈使句后用 will you / won\'t you;Let\'s 后用 shall we','Let\'s go for a walk, shall we?','我们去散散步吧,好吗?'],
+  ['祈使句+and/or','"祈使句 + and + 陈述句"表条件结果,or 表否则','Hurry up, or you will be late.','快点,否则你要迟到了。'],
+  ['部分否定与全部否定','not…all/every/both 为部分否定;none/neither/nobody 为全部否定','Not all students like pop music.','并非所有学生都喜欢流行音乐。'],
+  ['It 作形式主语','It is + adj + for sb to do / of sb to do','It is important for us to learn English well.','学好英语对我们来说很重要。'],
+  ['It 作形式宾语','find/think/make + it + adj + to do','I find it difficult to solve this problem.','我觉得解决这个问题很难。'],
+  ['there be 结构·变体','there 后可接 seem/appear/happen 等,也可用 there be + 名词 + 分词','There happened to be a bus at the stop.','车站那里碰巧有一辆公交车。'],
+  ['冠词·抽象名词具体化','抽象名词前加不定冠词可表示具体的人或事','It is a great pleasure to meet you.','见到你是一件非常愉快的事。'],
+  ['数词·分数表达','分子用基数词,分母用序数词,分子大于 1 时分母加 s','Two thirds of the students are girls.','三分之二的学生是女生。'],
+  ['表语从句','连接词 that/whether/as if/as 引导,说明主语是什么或怎么样','The reason is that he was ill.','原因是当时他生病了。'],
+  ['宾语从句时态','主句过去时,宾语从句用相应过去时;客观真理用一般现在时','The teacher said the earth goes around the sun.','老师说地球绕着太阳转。'],
+  ['疑问词+不定式','who/what/which/how/when 等 + to do 作主语、宾语或表语','I don\'t know what to do next.','我不知道下一步该做什么。'],
+  ['插入语','插入语与句子其他成分用逗号隔开,去掉后句子仍完整','You are right, I think, about this problem.','关于这个问题,我想你是对的。'],
+  ['省略·并列结构','并列句中相同部分可省略,用 so/too/neither/nor 表"也"','He likes tea, and so do I.','他喜欢喝茶,我也一样。'],
+  ['虚拟·名词性从句中的 must','insist 表"坚持要求"后接虚拟;表"坚持认为"后接陈述语气','He insisted that we (should) leave at once.','他坚持要求我们立即离开。'],
+  ['not until 倒装','not until 置于句首,主句部分倒装(助动词提前)','Not until midnight did he finish his work.','直到午夜他才完成工作。'],
+  ['主语从句 it 与 that 省略','that 引导主语从句不可省略;引导宾语从句常可省略','I believe (that) he is honest.','我相信他是诚实的。'],
+];
+let grBatch = JSON.parse(localStorage.getItem('ms.grBatch') || '{"d":"","n":0}');
+const saveGrBatch = ()=> localStorage.setItem('ms.grBatch', JSON.stringify(grBatch));
+function grBatchN(){
+  const today = ymd(new Date());
+  if(grBatch.d !== today){ grBatch.d = today; grBatch.n = 0; saveGrBatch(); }
+  return grBatch.n;
+}
+function grammarOfDay(){
+  const arr = GRAMMAR_LESSONS.slice();
+  let seed = wdHash('gram-' + ymd(new Date()) + '-' + grBatchN());
+  for(let i = arr.length - 1; i > 0; i--){
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    const j = seed % (i + 1);
+    const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+  }
+  return arr[0];
+}
+function renderGrammar(){
+  const today = ymd(new Date());
+  document.getElementById('grDate').textContent = '今日(' + today + ') · 高级语法';
+  const g = grammarOfDay();
+  document.getElementById('grBox').innerHTML =
+    `<div class="gr-title">${esc(g[0])}</div>` +
+    `<div class="gr-desc">${esc(g[1])}</div>` +
+    `<div class="gr-ex">${esc(g[2])}</div>` +
+    `<div class="gr-cn">${esc(g[3] || '')}</div>`;
+}
+document.getElementById('grRefresh').onclick = ()=>{
+  const today = ymd(new Date());
+  if(grBatch.d !== today) grBatch.d = today, grBatch.n = 0;
+  grBatch.n++;
+  saveGrBatch();
+  renderGrammar();
+};
+/* ================= 每日解剖问答 ================= */
+const ANAT_QUESTIONS = [
+  ['人体最长的骨是哪块?','股骨','运动系统'],
+  ['面部唯一能活动的骨是?','下颌骨','运动系统'],
+  ['人体最大的籽骨是?','髌骨','运动系统'],
+  ['胸廓由哪些结构围成?','12对肋、胸骨、12块胸椎','运动系统'],
+  ['成人脊柱由多少块椎骨组成?','24块椎骨+1块骶骨+1块尾骨','运动系统'],
+  ['椎间盘由哪两部分构成?','外周的纤维环和中央的髓核','运动系统'],
+  ['椎间盘突出最常见的部位?','腰4-5、腰5-骶1之间','运动系统'],
+  ['颅骨之间特有的连接形式?','缝(如冠状缝、矢状缝)','运动系统'],
+  ['新生儿颅顶骨之间未闭合的间隙称?','囟门','运动系统'],
+  ['关节的基本结构有哪些?','关节面、关节囊、关节腔','运动系统'],
+  ['滑膜关节的辅助结构有哪些?','韧带、关节盘/半月板、滑膜襞','运动系统'],
+  ['膝关节内的半月板有几块?','内侧半月板和外侧半月板两块','运动系统'],
+  ['肩关节为什么易脱位?','关节头大、关节盂浅,关节囊松弛','运动系统'],
+  ['髋关节有何特点?','股骨头大、髋臼深,稳固性好','运动系统'],
+  ['人体最复杂、最大的关节是?','膝关节','运动系统'],
+  ['膈上有哪三个裂孔?','主动脉裂孔、食管裂孔、腔静脉裂孔','运动系统'],
+  ['骨骼肌收缩的基本结构单位是?','肌节','运动系统'],
+  ['长骨的基本构造?','骨干、骨骺、干骺端','运动系统'],
+  ['骨的基本结构包括?','骨膜、骨质、骨髓','运动系统'],
+  ['造血功能主要在骨的哪部分?','红骨髓','运动系统'],
+  ['消化系统中最大的消化腺是?','肝','消化系统'],
+  ['胆汁由哪个器官分泌?','肝(胆囊负责储存与浓缩)','消化系统'],
+  ['胆囊三角的边界?','胆囊管、肝总管与肝的脏面围成','消化系统'],
+  ['消化道最膨大的部分是?','胃','消化系统'],
+  ['小肠分哪三段?','十二指肠、空肠、回肠','消化系统'],
+  ['十二指肠溃疡好发部位?','十二指肠球部(上部)','消化系统'],
+  ['阑尾根部的体表投影?','脐与右髂前上棘连线的中外1/3交点(McBurney点)','消化系统'],
+  ['肝门内通过的结构?','肝固有动脉、门静脉、肝管及神经淋巴','消化系统'],
+  ['门静脉收集哪些部位的血液?','胃肠道、脾、胰的静脉血,汇入肝','消化系统'],
+  ['咽分哪三部分?','鼻咽、口咽、喉咽','消化系统'],
+  ['呼吸系统的主要呼吸肌是?','膈(肋间肌等辅助)','呼吸系统'],
+  ['气体交换的场所是?','肺泡','呼吸系统'],
+  ['喉部最大的软骨是?','甲状软骨','呼吸系统'],
+  ['吞咽时封闭喉口的软骨是?','会厌软骨','呼吸系统'],
+  ['声带位于喉的哪部分?','喉腔(声襞)','呼吸系统'],
+  ['左肺与右肺各分几叶?','左肺2叶,右肺3叶','呼吸系统'],
+  ['胸膜腔的最低部位?','肋膈隐窝','呼吸系统'],
+  ['纵隔指什么?','两侧纵隔胸膜之间的器官与结缔组织总称','呼吸系统'],
+  ['心脏有几个腔?','左心房、左心室、右心房、右心室四个腔','心血管系统'],
+  ['心尖搏动的位置?','左侧第5肋间隙,锁骨中线内侧1-2cm','心血管系统'],
+  ['体循环的起点与终点?','左心室→主动脉→全身→右心房','心血管系统'],
+  ['肺循环的起点是?','右心室→肺动脉','心血管系统'],
+  ['心的正常起搏点是?','窦房结','心血管系统'],
+  ['心的传导系统包括?','窦房结、房室结、房室束及其分支','心血管系统'],
+  ['体循环中唯一输送静脉血的动脉是?','肺动脉','心血管系统'],
+  ['上、下腔静脉汇入心哪个腔?','右心房','心血管系统'],
+  ['主动脉弓的三大分支?','头臂干、左颈总动脉、左锁骨下动脉','心血管系统'],
+  ['颈动脉窦是?','颈内动脉起始处的膨大,压力感受器','心血管系统'],
+  ['颈动脉小球是?','化学感受器,感知血液氧与二氧化碳','心血管系统'],
+  ['腹主动脉不成对的脏支有?','腹腔干、肠系膜上动脉、肠系膜下动脉','心血管系统'],
+  ['全身最大的淋巴管是?','胸导管,注入左静脉角','淋巴系统'],
+  ['脾的位置?','左季肋区,第9-11肋的深面','淋巴系统'],
+  ['肾的实质分哪两部分?','肾皮质和肾髓质','泌尿系统'],
+  ['肾单位由哪两部分构成?','肾小体(肾小球+肾小囊)和肾小管','泌尿系统'],
+  ['成人肾约平对哪一高度?','第11胸椎至第3腰椎,腹后壁','泌尿系统'],
+  ['膀胱三角的位置?','膀胱底内面,两输尿管口与尿道内口之间','泌尿系统'],
+  ['男性尿道分哪三部分?','前列腺部、膜部、海绵体部','泌尿系统'],
+  ['女性生殖腺是?','卵巢','生殖系统'],
+  ['受精通常发生在输卵管哪一段?','输卵管壶腹部','生殖系统'],
+  ['输卵管分哪四部?','子宫部、峡部、壶腹部、漏斗部','生殖系统'],
+  ['男性生殖腺是?','睾丸','生殖系统'],
+  ['最大的内分泌腺是?','甲状腺','内分泌系统'],
+  ['肾上腺分哪两部分?','皮质和髓质','内分泌系统'],
+  ['垂体前叶分泌哪些主要激素?','生长激素、促甲状腺激素、促肾上腺皮质激素、促性腺激素等','内分泌系统'],
+  ['分泌褪黑素、调节生物节律的是?','松果体','内分泌系统'],
+  ['脑分哪几大部分?','端脑、间脑、脑干、小脑','神经系统'],
+  ['脑干包括哪三部分?','中脑、脑桥、延髓','神经系统'],
+  ['大脑皮质运动中枢位于?','中央前回','神经系统'],
+  ['大脑皮质感觉中枢位于?','中央后回','神经系统'],
+  ['内囊损伤可出现什么?','对侧偏瘫、偏身感觉障碍、偏盲(三偏)','神经系统'],
+  ['脑脊液主要由哪里产生?','侧脑室及第三、四脑室的脉络丛','神经系统'],
+  ['脑脊液经什么结构回流入血?','蛛网膜粒→上矢状窦','神经系统'],
+  ['硬膜外隙的位置?','硬脊膜与椎管骨膜之间(硬膜外麻醉注药处)','神经系统'],
+  ['脊神经共有多少对?','31对(颈8、胸12、腰5、骶5、尾1)','神经系统'],
+  ['脑神经共有多少对?','12对','神经系统'],
+  ['臂丛由哪些脊神经前支组成?','颈5-8和胸1的前支','神经系统'],
+  ['全身最粗大的神经是?','坐骨神经','神经系统'],
+  ['交感神经兴奋的主要表现?','心跳加快、血压升高、瞳孔散大、支气管扩张','神经系统'],
+  ['眼球折光装置包括?','角膜、房水、晶状体、玻璃体','感觉器'],
+  ['视网膜的感光细胞有?','视锥细胞(强光与色觉)、视杆细胞(弱光)','感觉器'],
+  ['内耳迷路分哪两部分?','骨迷路和膜迷路','感觉器'],
+  ['听觉感受器位于?','耳蜗(螺旋器)','感觉器'],
+  ['皮肤分哪几层?','表皮和真皮(深面为皮下组织)','感觉器'],
+  ['人体最大的器官是?','皮肤','感觉器'],
+  ['分泌男性激素的主要是?','睾丸(间质细胞)','生殖系统'],
+  ['前列腺位于?','膀胱下方,包绕男性尿道起始部','生殖系统'],
+  ['肝的主要功能?','分泌胆汁、代谢、解毒、储存糖原等','消化系统'],
+  ['胰的内分泌部是?','胰岛,分泌胰岛素与胰高血糖素','消化系统'],
+  ['肾小球的功能?','滤过血液形成原尿','泌尿系统'],
+  ['尿生成包括哪三步?','肾小球滤过、肾小管重吸收、肾小管分泌','泌尿系统'],
+  ['胸膜腔与胸腔的关系?','胸膜腔是脏壁胸膜之间的密闭潜在间隙','呼吸系统'],
+  ['心脏瓣膜的作用?','防止血液逆流(二尖瓣、三尖瓣、主动脉瓣、肺动脉瓣)','心血管系统'],
+  ['体循环中唯一输送动脉血的静脉是?','肺静脉','心血管系统'],
+  ['人体最大的动脉是?','主动脉','心血管系统'],
+  ['听小骨包括?','锤骨、砧骨、镫骨','感觉器'],
+  ['鼓膜属于中耳还是外耳?','介于外耳道与鼓室之间,属中耳外侧壁','感觉器']
+];
+let anCount = +(localStorage.getItem('ms.anatCount') || 10);
+let anDone = JSON.parse(localStorage.getItem('ms.anatDone') || '{}');
+let anBatch = JSON.parse(localStorage.getItem('ms.anBatch') || '{"d":"","n":0}');
+const saveAnBatch = ()=> localStorage.setItem('ms.anBatch', JSON.stringify(anBatch));
+function anBatchN(){
+  const today = ymd(new Date());
+  if(anBatch.d !== today){ anBatch.d = today; anBatch.n = 0; saveAnBatch(); }
+  return anBatch.n;
+}
+function anKey(today){ return 'anat-' + today; }
+function saveAnDone(){ localStorage.setItem('ms.anatDone', JSON.stringify(anDone)); }
+function anatOfDay(){
+  const arr = ANAT_QUESTIONS.slice();
+  let seed = wdHash('anat-' + ymd(new Date()) + '-' + anBatchN());
+  for(let i = arr.length - 1; i > 0; i--){
+    seed = (seed * 1103515245 + 12345) >>> 0;
+    const j = seed % (i + 1);
+    const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+  }
+  return arr.slice(0, anCount);
+}
+function renderAnat(){
+  const today = ymd(new Date());
+  const k = anKey(today);
+  if(!anDone[k]) anDone[k] = [];
+  saveAnDone();
+  document.getElementById('anDate').textContent = '今日(' + today + ') · ' + anCount + ' 道解剖问答';
+  document.getElementById('anReviewN').textContent = anReviewedAll().length;
+  document.querySelectorAll('.an-n').forEach(b=> b.classList.toggle('on', +b.dataset.n === anCount));
+  const list = anatOfDay();
+  const done = anDone[k];
+  const box = document.getElementById('anList');
+  box.innerHTML = list.map((w, i)=>{
+    const isDone = done.includes(w[0]);
+    return `<div class="wd-item${isDone ? ' done' : ''}" data-a="${esc(w[0])}" onclick="anTap(this,'${esc(w[0])}')">
+      <div class="wd-en"><b>${esc(w[0])}</b><i>${esc(w[2] || '')}</i></div>
+      <div class="wd-meaning">${esc(w[1])}</div>
+      <button class="wd-btn">${isDone ? '✓ 记住了' : '记住了?'}</button>
+    </div>`;
+  }).join('');
+  document.getElementById('anBar').style.width = list.length ? Math.round(done.filter(d=> list.some(w=> w[0]===d)).length / list.length * 100) + '%' : '0%';
+}
+function anTap(el, w){
+  const today = ymd(new Date());
+  const k = anKey(today);
+  if(el.classList.contains('done')){
+    el.classList.remove('done');
+    anDone[k] = anDone[k].filter(x=> x !== w);
+    saveAnDone();
+    el.querySelector('.wd-btn').textContent = '记住了?';
+    el.classList.add('show');
+  } else if(el.classList.contains('show')){
+    el.classList.add('done');
+    if(!anDone[k].includes(w)) anDone[k].push(w);
+    saveAnDone();
+    el.querySelector('.wd-btn').textContent = '✓ 记住了';
+  } else {
+    el.classList.add('show');
+  }
+  const list = anatOfDay();
+  const done = anDone[k];
+  document.getElementById('anBar').style.width = list.length ? Math.round(done.filter(d=> list.some(x=> x[0]===d)).length / list.length * 100) + '%' : '0%';
+  document.getElementById('anReviewN').textContent = anReviewedAll().length;
+}
+document.querySelectorAll('.an-n').forEach(b=>{
+  b.onclick = ()=>{
+    anCount = +b.dataset.n;
+    localStorage.setItem('ms.anatCount', anCount);
+    renderAnat();
+  };
+});
+document.getElementById('anRefresh').onclick = ()=>{
+  const today = ymd(new Date());
+  if(anBatch.d !== today) anBatch.d = today, anBatch.n = 0;
+  anBatch.n++;
+  saveAnBatch();
+  renderAnat();
+};
+/* 已刷清单(跨天累计已记住的题目) */
+function anReviewedAll(){
+  const arr = [];
+  Object.keys(anDone).forEach(k=>{
+    (anDone[k]||[]).forEach(w=>{ if(!arr.includes(w)) arr.push(w); });
+  });
+  return arr;
+}
+function anLookup(q){
+  const f = ANAT_QUESTIONS.filter(x=> x[0]===q)[0];
+  return f || [q, '', ''];
+}
+document.getElementById('anReviewBtn').onclick = ()=>{
+  const box = document.getElementById('anReview');
+  const btn = document.getElementById('anReviewBtn');
+  if(!box.hidden){ box.hidden = true; btn.classList.remove('on'); return; }
+  const arr = anReviewedAll();
+  box.innerHTML = arr.length ? arr.map(q=>{
+    const it = anLookup(q);
+    return `<div class="rv-it"><b>${esc(it[0])}</b><span>${esc(it[1])}</span><i>${esc(it[2] || '')}</i></div>`;
+  }).join('') : '<div class="hint">还没有已记住的题目</div>';
+  box.hidden = false;
+  btn.classList.add('on');
+};
+/* ================= 校园地图 ================= */
+/* 底图:郑大主校区卫星地图(assets/campus-map.jpg,用户提供),标注为其上百分比坐标(近似) */
+const MAP_POINTS = {
+  '医科园': [69.5, 10.2],
+  '北核心教学区': [54.0, 39.2],
+  '文科园': [73.0, 39.7],
+  '图书馆': [69.0, 45.0],
+  '中核心教学区': [52.0, 45.6],
+  '南核心教学区': [49.5, 52.0],
+  '理科园': [74.0, 57.7],
+  '工科园': [74.0, 69.7],
+  '南操场': [16.0, 80.2]
+};
+const locBuilding = loc => {
+  if(!loc || /线上|待定/.test(loc)) return null;
+  if(/^南\d+/.test(loc)) return '南核心教学区';
+  if(/^北\d+/.test(loc)) return '北核心教学区';
+  if(/^中\d+/.test(loc)) return '中核心教学区';
+  if(/^(材|环|数|物|化|生)_/.test(loc)) return '理科园';
+  if(/^计\S*机房/.test(loc)) return '中核心教学区';
+  if(/操场/.test(loc)) return '南操场';
+  return null;
+};
+function renderMap(){
+  try{
+  const box = document.getElementById('mapBox');
+  const head = document.getElementById('mapHead');
+  const listBox = document.getElementById('mapList');
+  const wk = weekOf(new Date());
+  const wd = isoWd(new Date());
+  const today = courses.filter(c=> c.weekday===wd && c.weeks.includes(wk));
+  const todayBuildings = {};
+  today.forEach(c=>{ const b = locBuilding(c.location); if(b) (todayBuildings[b] = todayBuildings[b] || []).push(c); });
+  const names = Object.keys(todayBuildings);
+  head.textContent = names.length
+    ? ymd(new Date()) + ' ' + WK[wd-1] + ':今天在 ' + names.length + ' 个地点上课(红点)'
+    : ymd(new Date()) + ' ' + WK[wd-1] + ':今天没有线下课程';
+  listBox.innerHTML = Object.entries(todayBuildings).map(([b, cs])=>
+    '<div class="item"><div class="h"><span><b>' + b + '</b></span>' +
+    '<span style="color:var(--muted)">' + cs.length + ' 节</span></div>' +
+    cs.map(c=>'<div class="m">' + c.start + '-' + c.end + ' ' + esc(c.name) + ' @' + esc(c.location) + '</div>').join('') +
+    '</div>').join('') || '<div class="card empty">今天没有线下课程</div>';
+  let marks = '';
+  Object.keys(todayBuildings).forEach(b=>{
+    const p = MAP_POINTS[b];
+    if(!p) return;
+    const cs = todayBuildings[b];
+    const leftSide = p[0] <= 60; /* 地点在左侧 → 标签放右侧;在右侧 → 标签放左侧 */
+    marks += '<div class="pmark hot" data-b="' + b + '" style="left:' + p[0] + '%;top:' + p[1] + '%">' +
+      '<i style="background:#ef4444"></i><em></em>' +
+      '<div class="lead ' + (leftSide ? 'lead-r' : 'lead-l') + '">' +
+      '<b>' + b + '</b>' +
+      cs.map(c=>'<div class="lc">' + c.start + ' ' + esc(c.name) + (c.location ? ' · ' + esc(c.location) : '') + '</div>').join('') +
+      '</div></div>';
+  });
+  box.style.height = 'auto'; box.style.overflow = 'visible';
+  const layer = document.querySelector('#mapBox .mapmark-layer');
+  if(layer) layer.innerHTML = marks + (marks ? '' : '<div class="map-empty">今天没有线下课程</div>');
+  }catch(e){
+    const box = document.getElementById('mapBox');
+    box.innerHTML = '<div class="card empty">地图渲染出错:' + esc((e && e.message) || String(e)) + '</div>';
+  }
+}
+/* ================= 每日任务 ================= */
+let dailyTasks = JSON.parse(localStorage.getItem('ms.dailyTasks') || '[]');
+const saveDaily = () => localStorage.setItem('ms.dailyTasks', JSON.stringify(dailyTasks));
+
+function renderDaily(){
+  const t = new Date(); t.setHours(0,0,0,0);
+  const ymdToday = ymd(t);
+  const y = new Date(t); y.setDate(y.getDate()-1);
+  const ymdYesterday = ymd(y);
+  /* 只显示"今天或昨天实际上过课"课程的复习任务 */
+  const normName = s => String(s||'').replace(/\s+/g,'').replace(/[（）]/g, m=>m==='（'?'(':')');
+  const wkNow = weekOf(t), wkYest = weekOf(y);
+  const active = new Set(courses.filter(c=>
+    (c.weekday===isoWd(t) && (c.weeks||[]).indexOf(wkNow)>=0) ||
+    (c.weekday===isoWd(y) && (c.weeks||[]).indexOf(wkYest)>=0)
+  ).map(c=>normName(c.name)));
+  const rev = buildTasks().filter(x=>{
+    const d = ymd(x.due);
+    return (d === ymdToday || d === ymdYesterday) && active.has(normName(x.course));
+  });
+  const revBox = document.getElementById('dailyRev');
+  if(!rev.length) revBox.innerHTML = '<div class="hint">今天没有到期的复习任务,尽情补欠账吧</div>';
+  else {
+    /* 同一课程合并成一张卡:各节点分别列出、可分别点击 */
+    const revMap = {};
+    rev.forEach(x=>{
+      const k = normName(x.course);
+      (revMap[k] = revMap[k] || []).push(x);
+    });
+    revBox.innerHTML = Object.entries(revMap).map(([k, xs])=>{
+      const pct = Math.round(xs.reduce((s,x)=> s + (reviewProg[x.id]||0), 0) / xs.length);
+      const done = pct >= 100;
+      const barW = pct >= 100 ? 100 : (pct > 0 ? pct : 2);
+      const barCol = done ? '#0a9d5a' : '#1e6fff';
+      const pctCol = done ? '#0a9d5a' : (pct > 0 ? '#1e6fff' : 'var(--muted)');
+      const firstId = xs[0].id;
+      const cards = xs.map(x=>{
+        const p = reviewProg[x.id] || 0;
+        const d = p >= 100;
+        const ph = reviewPhotos[x.id] || [];
+        const th = ph.map((pp,i)=>
+          `<img class="thumb thumb-s" src="${pp.u}" alt="成果${i+1}" title="点击查看" ` +
+          `onclick="event.stopPropagation();showPhoto('${esc(x.id)}',${i})">`).join('');
+        return `<div class="m rv-node${d?' done':''}" onclick="event.stopPropagation();openReview('${esc(x.id)}')">
+          <div class="rv-node-t">第${x.round}天节点 · ${esc(x.method)} · ${esc(x.topic)}
+            <span class="nd-pct">${d ? '✓ 已完成' : p + '%'}</span></div>
+          <div class="rv-media">
+            ${th ? '<div class="thumbs">'+th+'</div>' : ''}
+            <button class="btn-mini" onclick="event.stopPropagation();addPhoto('${esc(x.id)}')">📷 添加成果</button>
+          </div>
+        </div>`;
+      }).join('');
+      return `<div class="item${done?' done':''}" onclick="openReview('${esc(firstId)}')">
+        <div class="h"><span><b>${esc(xs[0].course)}</b><em class="cnt">${xs.length} 个节点</em></span>
+          <span style="color:${pctCol};font-size:11.5px" title="完成度 ${pct}% · 点击修改">${pct}%</span></div>
+        ${cards}
+        <div class="bar"><i style="width:${barW}%;background:${barCol}"></i></div>
+        <div class="rv-status${done?' done':''}">${done ? '✓ 已完成' : '完成度 ' + pct + '% · 点击修改'}</div>
+      </div>`;
+    }).join('');
+  }
+  const list = document.getElementById('dailyList');
+  if(!dailyTasks.length) list.innerHTML = '<div class="hint">还没有待办,加一个吧</div>';
+  else list.innerHTML = dailyTasks.map((x,i)=>{
+    const rmTxt = (x.rmAt && !x.done && !x.rmDone) ? fmtTodoAt(new Date(x.rmAt)) : '';
+    return `<div class="daily-item${x.done?' done':''}">
+      <label class="dl"><input type="checkbox" ${x.done?'checked':''} onchange="toggleDaily(${i})"></label>
+      <span class="dt">${esc(x.text)}</span>
+      ${rmTxt ? `<span class="dl-rm">⏰ ${esc(rmTxt)}</span>` : ''}
+      <button class="btn ghost mini" onclick="setTodoRemind(${i})" title="设置提醒时间">⏰</button>
+      <button class="btn ghost mini" onclick="delDaily(${i})">✕</button>
+    </div>`;
+  }).join('');
+  const doneN = dailyTasks.filter(x=>x.done).length;
+  document.getElementById('dailyStat').textContent = dailyTasks.length ?
+    '今日完成 ' + doneN + '/' + dailyTasks.length : '';
+}
+function addDaily(){
+  const inp = document.getElementById('dailyInput');
+  const v = inp.value.trim();
+  if(!v){ toast('先写下要做的事'); return; }
+  dailyTasks.push({id: Date.now(), text: v, done: false});
+  saveDaily(); inp.value = ''; renderDaily();
+}
+function toggleDaily(i){
+  if(dailyTasks[i]){ dailyTasks[i].done = !dailyTasks[i].done; saveDaily(); renderDaily(); }
+}
+function delDaily(i){
+  if(!dailyTasks[i]) return;
+  if(dailyTasks[i].done || confirm('删除这条待办?')){ dailyTasks.splice(i,1); saveDaily(); renderDaily(); }
+}
+document.getElementById('btnDailyAdd').onclick = addDaily;
+document.getElementById('dailyInput').onkeydown = e=>{ if(e.key === 'Enter') addDaily(); };
+
+/* ===== 待办时间提醒 ===== */
+function parseTodoTime(s){
+  s = String(s||'').trim();
+  if(!s || /^(0|无|清除|清空|off|cancel)$/i.test(s)) return {clear:true};
+  const now = new Date();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})$/);
+  if(m) return {date: new Date(+m[1], +m[2]-1, +m[3], +m[4], +m[5], 0, 0)};
+  m = s.match(/^(\d{1,2})-(\d{1,2})[ T](\d{1,2}):(\d{2})$/);
+  if(m){ let dt = new Date(now.getFullYear(), +m[1]-1, +m[2], +m[3], +m[4], 0, 0); if(dt <= now) dt = new Date(now.getFullYear()+1, +m[1]-1, +m[2], +m[3], +m[4], 0, 0); return {date: dt}; }
+  m = s.match(/^(今天|今日|今晚)?\s*(\d{1,2}):(\d{2})$/);
+  if(m){ const dt = new Date(now); dt.setHours(+m[2], +m[3], 0, 0); if(dt <= now) dt.setDate(dt.getDate()+1); return {date: dt}; }
+  m = s.match(/^(明天|明日)\s*(\d{1,2}):(\d{2})$/);
+  if(m){ const dt = new Date(now); dt.setDate(dt.getDate()+1); dt.setHours(+m[2], +m[3], 0, 0); return {date: dt}; }
+  m = s.match(/^后天\s*(\d{1,2}):(\d{2})$/);
+  if(m){ const dt = new Date(now); dt.setDate(dt.getDate()+2); dt.setHours(+m[2], +m[3], 0, 0); return {date: dt}; }
+  m = s.match(/^(\d+)分钟(后)?$/);
+  if(m) return {date: new Date(now.getTime() + +m[1]*60000)};
+  m = s.match(/^(\d+)小时(后)?$/);
+  if(m) return {date: new Date(now.getTime() + +m[1]*3600000)};
+  m = s.match(/^(\d+)天(后)?$/);
+  if(m) return {date: new Date(now.getTime() + +m[1]*86400000)};
+  return {error:true};
+}
+function fmtTodoAt(d){
+  const now = new Date(), t0 = new Date(now); t0.setHours(0,0,0,0);
+  const d0 = new Date(d); d0.setHours(0,0,0,0);
+  const day = Math.round((d0 - t0)/86400000);
+  const hm = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  if(day === 0) return '今天 ' + hm;
+  if(day === 1) return '明天 ' + hm;
+  if(day === 2) return '后天 ' + hm;
+  return (d.getMonth()+1) + '-' + d.getDate() + ' ' + hm;
+}
+let curRmIdx = -1;
+function setTodoRemind(i){
+  const x = dailyTasks[i]; if(!x) return;
+  curRmIdx = i;
+  document.getElementById('setMeta').textContent = '当前:' + (x.rmAt ? fmtTodoAt(new Date(x.rmAt)) : '未设置');
+  document.getElementById('setRmInput').value = x.rmAt ? fmtTodoAt(new Date(x.rmAt)) : '';
+  document.getElementById('setModal').classList.add('on');
+  setTimeout(()=> document.getElementById('setRmInput').focus(), 60);
+}
+function applyTodoRemind(v){
+  const x = dailyTasks[curRmIdx]; if(!x){ closeSetModal(); return; }
+  const r = parseTodoTime(v);
+  if(r.error){ toast('时间格式没看懂,试试:今天 18:30'); return; }
+  if(r.clear){
+    x.rmAt = ''; x.rmDone = false; saveDaily(); renderDaily(); closeSetModal(); toast('已清除提醒'); return;
+  }
+  x.rmAt = r.date.toISOString(); x.rmDone = false;
+  saveDaily(); renderDaily(); closeSetModal(); toast('已设置提醒:' + fmtTodoAt(r.date));
+}
+function closeSetModal(){ document.getElementById('setModal').classList.remove('on'); curRmIdx = -1; }
+const REST_CHEERS = [
+    '上完课记得:喝口水、活动肩颈、看看窗外远眺。今天辛苦了,你真的很棒!',
+    '一天课下来不容易,给自己 10 分钟放空、拉伸一下,明天继续冲!',
+    '连排这么久,记得补水休息,认真学习的你值得一顿好吃的奖励!',
+    '辛苦了!睡前回顾一下今天的收获,你会发现又进步了一点,加油!',
+    '坚持到现在就是胜利,给自己点个赞,休息好才能学得更好!',
+    '下课了就别想上课的事,伸个懒腰听首歌,把电量充满!',
+    '满课的你是最勤奋的,记得早点睡,明天的你会感谢今天的努力!',
+    '一天连轴转确实累,但每一节课都在为你积累实力,好好犒劳自己吧!',
+    '再忙也要照顾好自己,泡个脚、听点轻音乐,让疲惫都散掉!',
+    '今天又是满课通关的一天,你已经打败了 99% 的拖延症!',
+    '别急着赶路,停下来喘口气,身体是革命的本钱,明天更有劲!',
+    '专注了一整天,脑子值得一次彻底的放松,洗个热水澡吧!',
+    '你认真上课的样子真的很帅/很美,休息好才配得上这份努力!',
+    '今天学到的每一点都会在未来派上用场,给自己鼓个掌!',
+    '累的时候想想目标,你已经比昨天更接近它了,稳住!',
+    '晚上给自己一点仪式感,一杯热牛奶、一段好音乐,好好睡一觉!'
+  ];
+function checkRestRemind(){
+  const now = new Date();
+  const wk = weekOf(now), wd = isoWd(now);
+  const dayCourses = courses.filter(c=> c.weekday===wd && c.weeks.includes(wk));
+  if(!dayCourses.length) return;
+  const total = dayCourses.reduce((s,c)=> s + (hm(c.end)-hm(c.start)), 0);
+  if(total < 420) return;
+  const lastEnd = Math.max(...dayCourses.map(c=>hm(c.end)));
+  const nowMin = now.getHours()*60 + now.getMinutes();
+  if(nowMin < lastEnd || nowMin > lastEnd + 60) return;
+  const key = 'rest|' + ymd(now) + '|' + lastEnd;
+  let reminded = JSON.parse(localStorage.getItem('ms.reminded') || '[]');
+  if(reminded.includes(key)) return;
+  reminded.push(key);
+  localStorage.setItem('ms.reminded', JSON.stringify(reminded));
+  const lastEndTxt = String(Math.floor(lastEnd/60)).padStart(2,'0') + ':' + String(lastEnd%60).padStart(2,'0');
+  const idx = Number(ymd(now).replace(/-/g,'')) % REST_CHEERS.length;
+  document.getElementById('rtText').textContent =
+    '今天连上 ' + Math.floor(total/60) + ' 小时 ' + (total%60) + ' 分,课都上完了,好好休息一下!';
+  document.getElementById('rtMeta').textContent =
+    '最后一节课 ' + lastEndTxt + ' 已结束 · ' + REST_CHEERS[idx];
+  document.getElementById('restModal').classList.add('on');
+}
+document.getElementById('rtOk').onclick = ()=> document.getElementById('restModal').classList.remove('on');
+setInterval(checkRestRemind, 60000);
+checkRestRemind();
+
+document.getElementById('setRmOk').onclick = ()=> applyTodoRemind(document.getElementById('setRmInput').value.trim());
+document.getElementById('setRmClear').onclick = ()=> applyTodoRemind('0');
+document.getElementById('setRmCancel').onclick = closeSetModal;
+document.getElementById('setRmInput').onkeydown = e=>{ if(e.key === 'Enter') applyTodoRemind(e.target.value.trim()); if(e.key === 'Escape') closeSetModal(); };
+function checkTodoRemind(){
+  const now = new Date();
+  let hit = null;
+  dailyTasks.forEach(x=>{ if(!x.done && !x.rmDone && x.rmAt && now >= new Date(x.rmAt)) hit = x; });
+  if(hit){
+    hit.rmDone = true; saveDaily();
+    const clash = (function(x){
+      if(!x || !x.rmAt) return [];
+      const d = new Date(x.rmAt);
+      const wk = weekOf(d), wd = isoWd(d);
+      if(isNaN(d.getTime())) return [];
+      const mm = d.getHours()*60 + d.getMinutes();
+      return courses.filter(c=> c.weekday===wd && c.weeks.includes(wk) && mm >= hm(c.start) && mm < hm(c.end)).map(c=>c.name);
+    })(hit);
+    document.getElementById('tmText').textContent = '⏰ ' + hit.text;
+    document.getElementById('tmMeta').textContent = '提醒时间:' + fmtTodoAt(new Date(hit.rmAt)) +
+      (clash.length ? ' · ⚠ 与「' + clash[0] + '」上课时间冲突' : '');
+    document.getElementById('todoModal').classList.add('on');
+    renderDaily();
+  }
+}
+document.getElementById('tmOk').onclick = ()=> document.getElementById('todoModal').classList.remove('on');
+
+/* ================= 上课提醒 ================= */
+let remindCfg = JSON.parse(localStorage.getItem('ms.remind') || 'null');
+const saveRemind = ()=> localStorage.setItem('ms.remind', JSON.stringify(remindCfg));
+
+document.getElementById('rbOk').onclick = ()=>{
+  remindCfg = {minutes: rmMin};
+  saveRemind();
+  document.getElementById('remindBar').style.display = 'none';
+  renderTomorrow();
+  toast('已开启课前 ' + remindCfg.minutes + ' 分钟提醒');
+};
+function fmtLead(min){
+  if(min >= 1440){ const d = Math.floor(min/1440), h = Math.round((min%1440)/60); return d + '天' + (h ? ' ' + h + '小时' : '') + '后'; }
+  if(min >= 60){ const h = Math.floor(min/60), m = min%60; return h + '小时' + (m ? ' ' + m + '分钟' : '') + '后'; }
+  return min + '分钟后';
+}
+function fmtUnit(min){
+  if(min >= 1440){ const d = Math.floor(min/1440), h = Math.round((min%1440)/60); return d + '天' + (h ? ' ' + h + '小时' : ''); }
+  if(min >= 60){ const h = Math.floor(min/60), m = min%60; return h + '小时' + (m ? ' ' + m + '分钟' : ''); }
+  return min + '分钟';
+}
+function showRemind(c, diff, m){
+  const custom = (c.rmText || '').trim();
+  const text = custom
+    ? custom.replace(/\{课\}/g, c.name).replace(/\{分钟\}/g, fmtUnit(diff))
+    : '「' + c.name + '」还有 ' + fmtLead(diff) + '开课,准备出发';
+  document.getElementById('rmText').textContent = text;
+  document.getElementById('rmMeta').textContent =
+    mh(hm(c.start)) + ' · ' + (c.location || '地点待定') + ' · ' + c.kind;
+  document.getElementById('remindModal').classList.add('on');
+}
+document.getElementById('rmOk').onclick = ()=> document.getElementById('remindModal').classList.remove('on');
+
+function checkRemind(){
+  const hasGlobal = remindCfg && remindCfg.minutes > 0;
+  if(!hasGlobal && !courses.some(c=> (c.rmMin||0) > 0)) return;
+  const now = new Date();
+  const y30 = new Date(now); y30.setDate(y30.getDate() - 30);
+  const y30k = ymd(y30);
+  let reminded = JSON.parse(localStorage.getItem('ms.reminded') || '[]');
+  reminded = reminded.filter(k=> k.slice(0,10) >= y30k);
+  const nowMin = now.getHours()*60 + now.getMinutes();
+  for(let dd = 0; dd <= 3; dd++){   /* 覆盖提前最多 3 天的天级提醒 */
+    const d = new Date(now); d.setDate(d.getDate() + dd);
+    const dwk = weekOf(d), dwd = isoWd(d);
+    courses.filter(c=> c.weekday===dwd && c.weeks.includes(dwk)).forEach(c=>{
+      const diff = hm(c.start) + dd*1440 - nowMin;
+      const m = (c.rmMin > 0) ? c.rmMin : (hasGlobal ? remindCfg.minutes : 0);   /* 单课设置优先,否则全局 */
+      if(m > 0 && diff > 0 && diff <= m){
+        const dayKey = ymd(d);   /* 用课程当天做 key:天级提醒只在进入窗口时弹一次 */
+        const key = dayKey + '|' + c.name + '|' + c.start + '|' + m;
+        if(!reminded.includes(key)){
+          reminded.push(key);
+          localStorage.setItem('ms.reminded', JSON.stringify(reminded));
+          showRemind(c, diff, m);
+        }
+      }
+    });
+  }
+}
+setInterval(checkRemind, 60000);
+setInterval(checkTodoRemind, 60000);
+checkRemind();
+checkTodoRemind();
+checkRainBanner();
+if(remindCfg && remindCfg.minutes) document.getElementById('remindBar').style.display = 'none';
+
+/* ================= 右上角设置 ================= */
+document.getElementById('btnSettings').onclick = ()=>{
+  document.getElementById('setCity2').value = CITY;
+  document.getElementById('setTerm2').value = ymd(TERM_START);
+  document.getElementById('setExamWeeks').value = cfgExamWeeks.join(',');
+  document.getElementById('setExam').textContent =
+    '当前:第 ' + cfgExamWeeks.join('、') + ' 周 · 距考试周 ' + examLeft() + ' 天';
+  const on = !!(remindCfg && remindCfg.minutes);
+  document.getElementById('remindOn2').checked = on;
+  setRmMin(on ? remindCfg.minutes : 60);
+  document.getElementById('rainOn2').checked = rainOn;
+  ['conf','daily','rev','tmr','map','words','anat'].forEach(k=>{
+    const cb = document.getElementById('fg-' + k);
+    if(cb) cb.checked = tabsCfg[k] !== false;
+  });
+  document.getElementById('settingsModal').classList.add('on');
+};
+let rmMin = 60;
+function setRmMin(m){
+  rmMin = m;
+  const v1 = document.getElementById('rmMinVal');
+  if(v1) v1.textContent = m + ' 分钟';
+  const v2 = document.getElementById('rmBarVal');
+  if(v2) v2.textContent = m + ' 分钟';
+  document.querySelectorAll('#rmMinMenu .wk-it, #rmBarMenu .wk-it').forEach(it=>
+    it.classList.toggle('cur', +it.getAttribute('data-min') === m));
+}
+document.getElementById('rmMinTrigger').onclick = ()=>{
+  const box = document.getElementById('rmMinBox');
+  box.classList.toggle('open');
+  document.getElementById('rmMinMenu').hidden = !box.classList.contains('open');
+};
+document.querySelectorAll('#rmMinMenu .wk-it').forEach(it=>{
+  it.onclick = ()=>{
+    setRmMin(+it.getAttribute('data-min'));
+    document.getElementById('rmMinBox').classList.remove('open');
+    document.getElementById('rmMinMenu').hidden = true;
+  };
+});
+document.getElementById('rmBarTrigger').onclick = ()=>{
+  const box = document.getElementById('rmBarBox');
+  box.classList.toggle('open');
+  document.getElementById('rmBarMenu').hidden = !box.classList.contains('open');
+};
+document.querySelectorAll('#rmBarMenu .wk-it').forEach(it=>{
+  it.onclick = ()=>{
+    setRmMin(+it.getAttribute('data-min'));
+    document.getElementById('rmBarBox').classList.remove('open');
+    document.getElementById('rmBarMenu').hidden = true;
+  };
+});
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#rmBarBox')){
+    document.getElementById('rmBarBox').classList.remove('open');
+    document.getElementById('rmBarMenu').hidden = true;
+  }
+});
+document.addEventListener('click', e=>{
+  if(!e.target.closest('#rmMinBox')){
+    document.getElementById('rmMinBox').classList.remove('open');
+    document.getElementById('rmMinMenu').hidden = true;
+  }
+});
+let pendingBackup = null;
+function exportBackup(){
+  const data = {__meta:{app:'MedSchedule', version:1, at:new Date().toISOString()}};
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(k && k.indexOf('ms.') === 0) data[k] = localStorage.getItem(k);
+  }
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'medschedule-backup-' + ymd(new Date()).replace(/-/g,'') + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(a.href), 2000);
+}
+document.getElementById('btnExportBackup').onclick = exportBackup;
+document.getElementById('btnImportBackup').onclick = ()=>
+  document.getElementById('importBackupFile').click();
+document.getElementById('importBackupFile').onchange = ()=>{
+  const file = document.getElementById('importBackupFile').files[0];
+  if(!file) return;
+  const rd = new FileReader();
+  rd.onload = ()=>{
+    try{
+      const data = JSON.parse(rd.result);
+      if(!data || typeof data !== 'object' || !data.__meta){
+        document.getElementById('importMeta').textContent = '这不是有效的课表备份文件(缺少标识)。';
+        document.getElementById('importModal').classList.add('on');
+        return;
+      }
+      pendingBackup = data;
+      let n = 0;
+      Object.keys(data).forEach(k=>{ if(k.indexOf('ms.') === 0) n++; });
+      const at = data.__meta.at ? ' · 备份于 ' + String(data.__meta.at).slice(0,16) : '';
+      document.getElementById('importMeta').textContent =
+        '识别到备份文件(共 ' + n + ' 项数据' + at + ')。';
+      document.getElementById('importModal').classList.add('on');
+    }catch(e){
+      document.getElementById('importMeta').textContent = '文件解析失败,请确认选择了正确的备份 JSON 文件。';
+      document.getElementById('importModal').classList.add('on');
+    }
+  };
+  rd.readAsText(file);
+  document.getElementById('importBackupFile').value = '';
+};
+document.getElementById('importOk').onclick = ()=>{
+  if(!pendingBackup) return;
+  Object.keys(pendingBackup).forEach(k=>{
+    if(k.indexOf('ms.') === 0) localStorage.setItem(k, pendingBackup[k]);
+  });
+  location.reload();
+};
+document.getElementById('importCancel').onclick = ()=>
+  document.getElementById('importModal').classList.remove('on');
+document.getElementById('btnSettingsClose').onclick = ()=>
+  document.getElementById('settingsModal').classList.remove('on');
+document.getElementById('btnSaveSet').onclick = ()=>{
+  const c = document.getElementById('setCity2').value.trim();
+  const t = document.getElementById('setTerm2').value.trim();
+  if(c){ CITY = c; localStorage.setItem('ms.city', c); }
+  if(/^\d{4}-\d{2}-\d{2}$/.test(t)){ TERM_START = new Date(t); localStorage.setItem('ms.term', t); }
+  if(document.getElementById('remindOn2').checked){
+    remindCfg = {minutes: rmMin};
+    saveRemind();
+    document.getElementById('remindBar').style.display = 'none';
+  } else {
+    remindCfg = null; saveRemind();
+    document.getElementById('remindBar').style.display = 'flex';
+  }
+  rainOn = document.getElementById('rainOn2').checked;
+  localStorage.setItem('ms.rainOn', rainOn ? '1' : '0');
+  const ewVal = document.getElementById('setExamWeeks').value.trim();
+  if(ewVal){
+    const arr = ewVal.split(/[,，\s]+/).map(Number).filter(n=> Number.isInteger(n) && n >= 1 && n <= 20);
+    if(arr.length){ cfgExamWeeks = [...new Set(arr)].sort((a,b)=>a-b); saveExamWeeks(); }
+    else toast('考试周格式不对,已保留原设置');
+  }
+  ['conf','daily','rev','tmr','map','words','anat'].forEach(k=>{
+    const cb = document.getElementById('fg-' + k);
+    if(cb) tabsCfg[k] = cb.checked;
+  });
+  saveTabsCfg(); applyTabs();
+  refresh(); renderTomorrow(); checkRainBanner();
+  document.getElementById('settingsModal').classList.remove('on');
+  toast('设置已保存');
+};
+document.getElementById('btnWipe2').onclick = ()=>{
+  if(!courses.length){ toast('课表本来就是空的,可以直接导入新课表'); return; }
+  if(!confirm('确定删除全部课程?\n删除后课表为空,可导入新课表。')) return;
+  courses = []; save(); refresh(); renderTomorrow();
+  document.getElementById('settingsModal').classList.remove('on');
+  toast('课表已清空,可以导入新课表了');
+};
+
+const modal = document.getElementById('modal');
+document.getElementById('btnImport').onclick = ()=>{
+  const ta = document.getElementById('impText');
+  if(!ta.dataset.filled){ ta.value = USER_TEXT; ta.dataset.filled = '1'; }
+  modal.classList.add('on');
+};
+document.getElementById('btnClose').onclick = ()=> modal.classList.remove('on');
+document.getElementById('btnParse').onclick = ()=>{
+  const ta = document.getElementById('impText');
+  ta.readOnly = false;
+  const added = parseText(ta.value);
+  if(!added.length){ alert('没识别到课程,检查一下格式:\n周一 08:00-09:40 课程名 @地点 1-16周 理论'); return; }
+  if(courses.length && !confirm(`将用 ${added.length} 门新课替换当前 ${courses.length} 门课,继续吗?`)) return;
+  courses = added; save(); modal.classList.remove('on'); refresh();
+};
+document.getElementById('btnSample').onclick = ()=>{ courses = SAMPLE; save(); modal.classList.remove('on'); refresh(); };
+/* 考试安排照片扫描(OCR) */
+let tessWorkerP = null;
+const TESS_SRCS = [
+  'https://fastly.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
+  'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.1/tesseract.min.js'
+];
+function loadTessScript(src){
+  return new Promise((res,rej)=>{
+    if(window.Tesseract) return res();
+    const s = document.createElement('script');
+    s.src = src + '?_t=' + Date.now() + Math.floor(Math.random()*1000);
+    s.onload = ()=> window.Tesseract ? res() : rej(new Error('脚本未生效'));
+    s.onerror = ()=> rej(new Error('加载失败'));
+    document.head.appendChild(s);
+    setTimeout(()=>{ if(!window.Tesseract) rej(new Error('加载超时')); }, 20000);
+  });
+}
+async function getTessWorker(){
+  if(!tessWorkerP){
+    tessWorkerP = (async()=>{
+      let ok = false;
+      for(const src of TESS_SRCS){
+        try{ await loadTessScript(src); ok = true; break; }catch(e){ /* 试下一个源 */ }
+      }
+      if(!ok) throw new Error('识别引擎加载失败,请检查网络后重试');
+      return Tesseract.createWorker(['chi_sim+eng'], 1, {
+        langPath: 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/{lang}/4.0.0/{lang}.traineddata.gz'
+      });
+    })();
+    tessWorkerP = tessWorkerP.catch(err=>{ tessWorkerP = null; throw err; });
+  }
+  return tessWorkerP;
+}
+function cleanOcrText(t){
+  return t
+    .replace(/[０-９]/g, ch=> String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+    .replace(/[：:]/g, ':')
+    .replace(/[—–―－]/g, '-')
+    .replace(/[｜|]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/[ 	]+$/g, '')
+    .trim();
+}
+document.getElementById('btnScanExam').onclick = ()=>{
+  document.getElementById('impExamPhoto').click();
+};
+document.getElementById('impExamPhoto').onchange = async e=>{
+  const f = e.target.files && e.target.files[0];
+  if(!f) return;
+  e.target.value = '';
+  const ta = document.getElementById('impExam');
+  ta.value = '';
+  toast('📷 识别中…首次使用需下载识别包,请稍候');
+  try{
+    const worker = await getTessWorker();
+    const {data:{text}} = await worker.recognize(f);
+    const lines = text.split('\n').map(cleanOcrText).filter(Boolean);
+    ta.value = lines.join('\n');
+    toast(lines.length ? '识别完成,请检查修正后再导入' : '照片中未识别到文字,请重拍或改用粘贴');
+  }catch(err){
+    console.error(err);
+    toast('识别失败:' + (err && err.message ? err.message : '未知错误') + '(建议联网后重试,或使用线上链接打开)');
+  }
+};
+/* 考试安排粘贴导入 */
+const EXAM_WD = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'日':7,'天':7};
+document.getElementById('btnParseExam').onclick = ()=>{
+  const txt = document.getElementById('impExam').value;
+  const lines = txt.split('\n').map(x=>x.trim()).filter(Boolean);
+  const weeks = new Set(); let added = 0, skipped = 0;
+  lines.forEach(line=>{
+    const m = line.match(/第\s*(\d+)\s*周\s*(?:周)?([一二三四五六日天1-7])\s*(\d{1,2}:\d{2})\s*[-~至]\s*(\d{1,2}:\d{2})\s*(.+)/);
+    if(!m){ skipped++; return; }
+    const wk = +m[1], d = EXAM_WD[m[2]] || +m[2], start = m[3], end = m[4], name = m[5].trim();
+    if(!examPlan[wk]) examPlan[wk] = [];
+    const dup = examPlan[wk].some(x=> x.d === d && x.start === start && x.name === name);
+    if(dup){ skipped++; return; }
+    examPlan[wk].push({d:d, start:start, end:end, name:name});
+    weeks.add(wk); added++;
+  });
+  if(added){ saveExamPlan(); toast('已导入 ' + added + ' 条考试安排(第 ' + [...weeks].sort((a,b)=>a-b).join('、') + ' 周)'); }
+  else toast('没有解析到考试安排:请按「第X周 周几 开始-结束 科目」格式填写');
+  if(skipped) toast('跳过 ' + skipped + ' 行(格式不符或重复)');
+  document.getElementById('impExam').value = '';
+};
+document.getElementById('btnClear').onclick = ()=>{
+  if(!confirm('确定清空所有课程?')) return;
+  courses = []; save(); modal.classList.remove('on'); refresh();
+};
+
+CUR_WK = clampWeek(weekOf(new Date()));
+refresh();
+</script>
+</body>
+</html>
