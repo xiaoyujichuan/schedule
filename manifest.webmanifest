@@ -1,0 +1,19 @@
+{
+  "name": "MedSchedule · 医学生智能课表",
+  "short_name": "课表",
+  "description": "郑州大学医学检验技术课程表:今日课程、复习任务、考试周、天气提醒",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef3fb",
+  "theme_color": "#1e6fff",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
