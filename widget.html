@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%231e6fff'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='white' font-family='sans-serif'>课</text></svg>">
+<title>今日课程</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{font-family:"PingFang SC","Microsoft YaHei",sans-serif;background:#eef3fb;color:#1f2d3d;
+       min-height:100vh;padding:10px}
+  .wrap{max-width:520px;margin:0 auto}
+  .head{display:flex;align-items:baseline;justify-content:space-between;
+        background:linear-gradient(135deg,#1e6fff,#4f8dff);color:#fff;border-radius:16px;
+        padding:14px 16px;margin-bottom:10px}
+  .head .t{font-size:20px;font-weight:700}
+  .head .d{font-size:13px;opacity:.92}
+  .card{background:#fff;border-radius:16px;padding:12px 14px;box-shadow:0 2px 8px rgba(30,111,255,.08);margin-bottom:10px}
+  .day{display:flex;justify-content:space-between;font-size:14px;font-weight:600;margin-bottom:10px;color:#1e6fff}
+  .it{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px dashed #e6ecf5}
+  .it:last-child{border-bottom:none}
+  .it .time{font-size:15px;font-weight:700;color:#1f2d3d;min-width:96px}
+  .it .time small{display:block;font-size:12px;color:#8a97a8;font-weight:400}
+  .it .nm{flex:1;font-size:16px;font-weight:600}
+  .it .nm small{display:block;font-size:12.5px;color:#8a97a8;font-weight:400;margin-top:2px}
+  .it.ing{background:#f0f6ff;border-radius:10px;border:1.5px solid #1e6fff;padding:8px 10px}
+  .it.ing .badge{background:#1e6fff;color:#fff;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600}
+  .it.done{opacity:.42}
+  .empty{text-align:center;font-size:16px;color:#8a97a8;padding:18px 0}
+  .next{font-size:16px;font-weight:600;color:#1f2d3d;text-align:center}
+  .next b{color:#1e6fff;font-size:18px}
+  .next .soon{color:#f76b15}
+  .foot{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#8a97a8;margin-top:4px;padding:0 4px}
+  .foot button{background:transparent;border:none;color:#1e6fff;font-size:13px;cursor:pointer;padding:6px 10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <span class="t">今日课程</span>
+    <span class="d" id="headDate"></span>
+  </div>
+  <div class="card" id="list"></div>
+  <div class="card next" id="next"></div>
+  <div class="foot">
+    <span id="updated"></span>
+    <button onclick="render()">刷新</button>
+  </div>
+</div>
+<script>
+const BUILTIN = [{"name": "普通化学 (B)", "weekday": 1, "start": "08:00", "end": "09:40", "location": "南3_407", "kind": "理论", "weeks": [4, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], "credit": 2, "teacher": "蔡金孟", "note": ""}, {"name": "大学英语（I）", "weekday": 1, "start": "08:00", "end": "09:40", "location": "南2_303B(智慧教室)", "kind": "理论", "weeks": [6, 7], "credit": 2, "teacher": "段艳丹", "note": ""}, {"name": "大学生心理健康教育", "weekday": 1, "start": "10:10", "end": "11:50", "location": "数_307", "kind": "选修", "weeks": [4, 6, 7, 10, 11, 12, 13, 14, 15, 16, 17], "credit": 2, "teacher": "梁紫平", "note": ""}, {"name": "大学生心理健康教育", "weekday": 1, "start": "10:10", "end": "11:50", "location": "线上/待定", "kind": "选修", "weeks": [8, 9], "credit": 2, "teacher": "梁紫平", "note": ""}, {"name": "04# 盐酸溶液标定", "weekday": 1, "start": "14:00", "end": "17:40", "location": "", "kind": "实验", "weeks": [8], "credit": 2, "teacher": "李林科", "note": ""}, {"name": "06# 沉淀法制备二氧化硅", "weekday": 1, "start": "14:00", "end": "17:40", "location": "", "kind": "实验", "weeks": [10], "credit": 2, "teacher": "李林科", "note": ""}, {"name": "07# 气体常数的测定", "weekday": 1, "start": "14:00", "end": "17:40", "location": "", "kind": "实验", "weeks": [11], "credit": 2, "teacher": "李林科", "note": ""}, {"name": "03# 溶液配制", "weekday": 1, "start": "14:00", "end": "17:40", "location": "", "kind": "实验", "weeks": [7], "credit": 2, "teacher": "李林科", "note": ""}, {"name": "01# 实验安全教育,认知仪器", "weekday": 1, "start": "14:00", "end": "17:40", "location": "", "kind": "实验", "weeks": [4], "credit": 2, "teacher": "李林科", "note": ""}, {"name": "04# 氢氧化钠溶液标定", "weekday": 1, "start": "14:00", "end": "17:40", "location": "", "kind": "实验", "weeks": [9], "credit": 2, "teacher": "李林科", "note": ""}, {"name": "02# 氯化钠的提纯", "weekday": 1, "start": "14:00", "end": "17:40", "location": "", "kind": "实验", "weeks": [6], "credit": 2, "teacher": "李林科", "note": ""}, {"name": "组织学与胚胎学", "weekday": 1, "start": "16:00", "end": "17:40", "location": "环_401", "kind": "理论", "weeks": [15, 16, 17], "credit": 2, "teacher": "刘国红/杨继要", "note": ""}, {"name": "小脑、间脑", "weekday": 1, "start": "19:00", "end": "20:40", "location": "", "kind": "理论", "weeks": [15, 16], "credit": 2, "teacher": "帖红艳", "note": ""}, {"name": "脊髓、脑干", "weekday": 1, "start": "19:00", "end": "20:40", "location": "", "kind": "理论", "weeks": [13, 14], "credit": 2, "teacher": "刘锦/帖红艳", "note": ""}, {"name": "脑神经", "weekday": 1, "start": "19:00", "end": "20:40", "location": "", "kind": "理论", "weeks": [11, 12], "credit": 2, "teacher": "刘锦", "note": ""}, {"name": "1、听力曲线的测试", "weekday": 2, "start": "08:00", "end": "11:50", "location": "", "kind": "实验", "weeks": [13], "credit": 2, "teacher": "", "note": ""}, {"name": "3、用光栅及分光仪测光波波长", "weekday": 2, "start": "08:00", "end": "11:50", "location": "", "kind": "实验", "weeks": [17], "credit": 2, "teacher": "", "note": ""}, {"name": "4、半导体热敏电阻特性研究", "weekday": 2, "start": "08:00", "end": "11:50", "location": "", "kind": "实验", "weeks": [7], "credit": 2, "teacher": "", "note": ""}, {"name": "6、超声声速的测量及应用", "weekday": 2, "start": "08:00", "end": "11:50", "location": "", "kind": "实验", "weeks": [11], "credit": 2, "teacher": "", "note": ""}, {"name": "5、示波器的使用", "weekday": 2, "start": "08:00", "end": "11:50", "location": "", "kind": "实验", "weeks": [9], "credit": 2, "teacher": "", "note": ""}, {"name": "2、用旋光计测量糖溶液的浓度", "weekday": 2, "start": "08:00", "end": "11:50", "location": "", "kind": "实验", "weeks": [15], "credit": 2, "teacher": "", "note": ""}, {"name": "大学生心理健康教育", "weekday": 2, "start": "10:10", "end": "11:50", "location": "北1_201", "kind": "选修", "weeks": [12, 14, 16], "credit": 2, "teacher": "梁紫平", "note": ""}, {"name": "医学检验导论", "weekday": 2, "start": "10:10", "end": "11:50", "location": "北3_408", "kind": "理论", "weeks": [6], "credit": 2, "teacher": "岳保红", "note": ""}, {"name": "大学物理B", "weekday": 2, "start": "14:00", "end": "15:40", "location": "北3_412", "kind": "理论", "weeks": [4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], "credit": 2, "teacher": "刘海东", "note": ""}, {"name": "系统解剖学", "weekday": 2, "start": "16:00", "end": "17:40", "location": "北3_208", "kind": "理论", "weeks": [4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16], "credit": 2, "teacher": "帖红艳", "note": ""}, {"name": "大学英语（I）", "weekday": 3, "start": "08:00", "end": "09:40", "location": "南2_303B(智慧教室)", "kind": "理论", "weeks": [4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], "credit": 2, "teacher": "段艳丹", "note": ""}, {"name": "组织学与胚胎学", "weekday": 3, "start": "10:10", "end": "11:50", "location": "材_307", "kind": "理论", "weeks": [4, 6, 7, 8, 9], "credit": 2, "teacher": "金辉/黄忻", "note": ""}, {"name": "组织学与胚胎学", "weekday": 3, "start": "10:10", "end": "11:50", "location": "环_401", "kind": "理论", "weeks": [10, 11, 12, 13, 14, 15, 16, 17], "credit": 2, "teacher": "刘国红/杨继要/金辉", "note": ""}, {"name": "大学物理B", "weekday": 3, "start": "14:00", "end": "15:40", "location": "北3_412", "kind": "理论", "weeks": [17], "credit": 2, "teacher": "王宇航", "note": ""}, {"name": "系统解剖学", "weekday": 3, "start": "14:00", "end": "15:40", "location": "北2_102", "kind": "理论", "weeks": [13, 14, 15, 16], "credit": 2, "teacher": "帖红艳", "note": ""}, {"name": "医学检验导论", "weekday": 3, "start": "14:00", "end": "15:40", "location": "材_506", "kind": "理论", "weeks": [6, 7, 8, 9, 10, 11, 12], "credit": 2, "teacher": "孙萍萍/岳保红/李文悌", "note": ""}, {"name": "普通化学 (B)", "weekday": 3, "start": "16:00", "end": "17:40", "location": "南3_407", "kind": "理论", "weeks": [4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], "credit": 2, "teacher": "蔡金孟", "note": ""}, {"name": "创新创业基础", "weekday": 3, "start": "19:00", "end": "20:40", "location": "北1_402", "kind": "选修", "weeks": [6, 7, 8, 9, 10, 11, 12, 13], "credit": 2, "teacher": "王梦梦", "note": ""}, {"name": "体育（I）", "weekday": 4, "start": "08:00", "end": "09:40", "location": "南操场", "kind": "理论", "weeks": [15, 16, 17], "credit": 2, "teacher": "方志童", "note": ""}, {"name": "体育（I）", "weekday": 4, "start": "10:10", "end": "11:50", "location": "南操场", "kind": "理论", "weeks": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], "credit": 2, "teacher": "方志童", "note": ""}, {"name": "人工智能通识与数字素养", "weekday": 4, "start": "14:00", "end": "15:40", "location": "计3机房", "kind": "选修", "weeks": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], "credit": 2, "teacher": "胡庆红", "note": ""}, {"name": "大学物理B", "weekday": 4, "start": "16:00", "end": "17:40", "location": "北3_412", "kind": "理论", "weeks": [5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], "credit": 2, "teacher": "刘海东", "note": ""}, {"name": "人工智能通识与数字素养", "weekday": 4, "start": "16:00", "end": "17:40", "location": "北2_406", "kind": "选修", "weeks": [7], "credit": 2, "teacher": "胡庆红", "note": ""}, {"name": "人工智能通识与数字素养", "weekday": 4, "start": "19:00", "end": "20:40", "location": "北2_306", "kind": "选修", "weeks": [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17], "credit": 2, "teacher": "胡庆红", "note": ""}, {"name": "面颅骨、关节", "weekday": 5, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [7], "credit": 2, "teacher": "帖红艳", "note": ""}, {"name": "脊神经", "weekday": 5, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [16], "credit": 2, "teacher": "帖红艳", "note": ""}, {"name": "四肢骨、脑颅骨", "weekday": 5, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [6], "credit": 2, "teacher": "帖红艳", "note": ""}, {"name": "心", "weekday": 5, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [12], "credit": 2, "teacher": "刘锦", "note": ""}, {"name": "男性/女性生殖系统、腹膜会阴", "weekday": 5, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [11], "credit": 2, "teacher": "刘锦", "note": ""}, {"name": "静脉、淋巴", "weekday": 5, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [14], "credit": 2, "teacher": "帖红艳", "note": ""}, {"name": "躯干骨", "weekday": 5, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [5], "credit": 2, "teacher": "帖红艳", "note": ""}, {"name": "全身肌", "weekday": 5, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [8], "credit": 2, "teacher": "帖红艳", "note": ""}, {"name": "消化系统", "weekday": 5, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [9], "credit": 2, "teacher": "帖红艳", "note": ""}, {"name": "呼吸系统、泌尿系统", "weekday": 5, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [10], "credit": 2, "teacher": "帖红艳", "note": ""}, {"name": "感觉器（视器、前庭蜗器）", "weekday": 5, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [15], "credit": 2, "teacher": "帖红艳", "note": ""}, {"name": "动脉", "weekday": 5, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [13], "credit": 2, "teacher": "刘锦", "note": ""}, {"name": "大学物理B", "weekday": 5, "start": "14:00", "end": "15:40", "location": "北3_412", "kind": "理论", "weeks": [11, 12, 13, 14, 15, 16], "credit": 2, "teacher": "刘海东", "note": ""}, {"name": "神经系统传导路", "weekday": 5, "start": "19:00", "end": "20:40", "location": "", "kind": "理论", "weeks": [15, 16], "credit": 2, "teacher": "帖红艳", "note": ""}, {"name": "端脑", "weekday": 5, "start": "19:00", "end": "20:40", "location": "", "kind": "理论", "weeks": [11, 12], "credit": 2, "teacher": "刘锦", "note": ""}, {"name": "脑脊髓被膜、脑血管、脑脊液", "weekday": 5, "start": "19:00", "end": "20:40", "location": "", "kind": "理论", "weeks": [13, 14], "credit": 2, "teacher": "刘锦/帖红艳", "note": ""}, {"name": "大学英语（I）", "weekday": 6, "start": "08:00", "end": "09:40", "location": "南2_303B(智慧教室)", "kind": "理论", "weeks": [5], "credit": 2, "teacher": "段艳丹", "note": ""}, {"name": "人工智能通识与数字素养", "weekday": 6, "start": "14:00", "end": "15:40", "location": "南4_103", "kind": "选修", "weeks": [7], "credit": 2, "teacher": "胡庆红", "note": ""}, {"name": "军事理论", "weekday": 6, "start": "16:00", "end": "17:40", "location": "北1_104", "kind": "理论", "weeks": [8, 9, 10, 11, 12, 13, 15, 16], "credit": 2, "teacher": "卢璐", "note": ""}, {"name": "08# 水溶液中的离子平衡", "weekday": 7, "start": "08:00", "end": "11:50", "location": "", "kind": "实验", "weeks": [5], "credit": 2, "teacher": "李林科", "note": ""}, {"name": "免疫系统", "weekday": 7, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [12], "credit": 2, "teacher": "刘莉", "note": ""}, {"name": "内分泌系统", "weekday": 7, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [13], "credit": 2, "teacher": "刘莉", "note": ""}, {"name": "绪论、上皮组织", "weekday": 7, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [6], "credit": 2, "teacher": "刘莉", "note": ""}, {"name": "结缔组织", "weekday": 7, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [7], "credit": 2, "teacher": "刘莉", "note": ""}, {"name": "血液、肌组织", "weekday": 7, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [9], "credit": 2, "teacher": "刘莉", "note": ""}, {"name": "女性生殖系统、胚胎学总论", "weekday": 7, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [16], "credit": 2, "teacher": "刘莉", "note": ""}, {"name": "神经组织", "weekday": 7, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [10], "credit": 2, "teacher": "刘莉", "note": ""}, {"name": "循环系统", "weekday": 7, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [11], "credit": 2, "teacher": "刘莉", "note": ""}, {"name": "消化腺、呼吸系统、泌尿系统、男性生殖系统", "weekday": 7, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [15], "credit": 2, "teacher": "刘莉", "note": ""}, {"name": "消化管", "weekday": 7, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [14], "credit": 2, "teacher": "刘莉", "note": ""}, {"name": "软骨、骨", "weekday": 7, "start": "08:00", "end": "11:50", "location": "", "kind": "理论", "weeks": [8], "credit": 2, "teacher": "刘莉", "note": ""}, {"name": "系统的发生", "weekday": 7, "start": "14:00", "end": "17:40", "location": "", "kind": "理论", "weeks": [16], "credit": 2, "teacher": "刘莉", "note": ""}];
+let COURSES;
+try{ const _s = JSON.parse(localStorage.getItem('ms.courses') || 'null'); COURSES = (Array.isArray(_s) && _s.length) ? _s : BUILTIN; }catch(e){ COURSES = BUILTIN; }
+const TERM_START = new Date('2026-09-07T00:00:00');
+const WK = ['周日','周一','周二','周三','周四','周五','周六'];
+const weekOf = d => Math.floor((new Date(d) - TERM_START) / 604800000) + 1;
+const isoWd = d => d.getDay() === 0 ? 7 : d.getDay();
+const hm = s => { const p = s.split(':'); return (+p[0])*60 + (+p[1]); };
+const pad = n => (n < 10 ? '0' : '') + n;
+function render(){
+  const now = new Date();
+  const wk = weekOf(now), wd = isoWd(now), cur = now.getHours()*60 + now.getMinutes();
+  document.getElementById('headDate').textContent =
+    (now.getMonth()+1) + '月' + now.getDate() + '日 ' + WK[wd] + ' · 第' + wk + '周';
+  const list = COURSES
+    .filter(c => c.weekday === wd && c.weeks.includes(wk))
+    .sort((a,b) => hm(a.start) - hm(b.start));
+  const box = document.getElementById('list');
+  if(!list.length){
+    box.innerHTML = '<div class="empty">今天没有课,休息一下吧</div>';
+  } else {
+    box.innerHTML = '<div class="day"><span>' + WK[wd] + ' · 第' + wk + '周</span><span>' + list.length + ' 节课</span></div>' +
+      list.map(c => {
+        const s = hm(c.start), e = hm(c.end);
+        const ing = s <= cur && e > cur;
+        const done = e <= cur;
+        const cls = ing ? 'it ing' : (done ? 'it done' : 'it');
+        const badge = ing ? '<span class="badge">进行中</span>' : '';
+        return '<div class="' + cls + '">' +
+          '<span class="time">' + c.start + '<small>~' + c.end + '</small></span>' +
+          '<span class="nm">' + c.name +
+            (c.location ? '<small>' + c.location + (c.teacher ? ' · ' + c.teacher : '') + '</small>' : (c.teacher ? '<small>' + c.teacher + '</small>' : '')) +
+          '</span>' + badge + '</div>';
+      }).join('');
+  }
+  const upcoming = list.filter(c => hm(c.end) > cur);
+  const nx = document.getElementById('next');
+  if(!upcoming.length){
+    nx.innerHTML = '今天课程已全部结束 🎉';
+  } else {
+    const n = upcoming[0], mins = hm(n.start) - cur;
+    const inText = mins <= 0 ? '<span class="soon">正在进行</span>'
+      : (mins < 60 ? '还有 <b>' + mins + ' 分钟</b>' : '还有 <b>' + Math.floor(mins/60) + ' 小时' + (mins%60 ? ' ' + (mins%60) + ' 分' : '') + '</b>');
+    nx.innerHTML = '下一节 ' + n.start + ' ' + n.name + '<br>' + inText;
+  }
+  document.getElementById('updated').textContent = '更新于 ' + pad(now.getHours()) + ':' + pad(now.getMinutes()) + ' · ' + (COURSES === BUILTIN ? '内置课表' : '同步课表');
+}
+render();
+setInterval(render, 60000);
+</script>
+</body>
+</html>
