@@ -976,8 +976,16 @@ function defaultTermStart(){
 }
 let TERM_START = new Date((localStorage.getItem('ms.term') || '2026-09-07'));  // 2026-2027-1 学期第1周周一
 let CITY = localStorage.getItem('ms.city') || CFG.defaultCity;
-const weekOf = d => Math.floor((new Date(d) - TERM_START) / 604800000) + 1;
-function dateOfWeek(w, wd){ const d = new Date(TERM_START); d.setDate(d.getDate() + (w-1)*7 + wd - 1); return d; }
+// 当前激活课表的开学日期:副课表可带独立 term,否则回退主课表 TERM_START
+function sheetTerm(){
+  if(active !== 'main'){
+    const s = altSheets[+active.slice(4)];
+    if(s && s.term) return new Date(s.term + 'T00:00:00');
+  }
+  return TERM_START;
+}
+const weekOf = d => Math.floor((new Date(d) - sheetTerm()) / 604800000) + 1;
+function dateOfWeek(w, wd){ const d = new Date(sheetTerm()); d.setDate(d.getDate() + (w-1)*7 + wd - 1); return d; }
 
 const SAMPLE = [
   {name:'系统解剖学', weekday:1, start:'08:00', end:'09:40', location:'教学楼A-301', kind:'理论', weeks:parseWeeks('1-16'), content:'绪论·运动系统', credit:4},
@@ -1450,7 +1458,7 @@ function renderWeek(wk){
   }
   document.getElementById('weekGrid').innerHTML = html;
   document.getElementById('subInfo').textContent =
-    `第 ${wk} 周 · 共 ${courses.length} 门课 · 开学首周 ${ymd(TERM_START)} · 当前:${curName()}`;
+    `第 ${wk} 周 · 共 ${courses.length} 门课 · 开学首周 ${ymd(sheetTerm())} · 当前:${curName()}`;
   renderStats(wk); renderExamTip(wk);
 }
 
@@ -2083,7 +2091,9 @@ function parseText(text){
     if(nm){ note = nm[1].trim(); rest = rest.replace(nm[0], ''); }
     const wm = rest.match(/([\d,，、~\-]+)\s*周/);
     if(wm){ weeks = parseWeeks(wm[1]); rest = rest.replace(wm[0], ''); }
-    const km = rest.match(/(实验|见习|选修|理论)\s*$/);
+    const od = rest.match(/(单|双)周/);
+    if(od){ weeks = weeks.filter(w => (od[1]==='单') === (w%2===1)); rest = rest.replace(od[0], ''); }
+    const km = rest.match(/(实验|见习|选修|理论|体育)\s*$/);
     if(km){ kind = km[1]; rest = rest.replace(km[0], ''); }
     const lm = rest.match(/@\s*(\S+)/);
     if(lm){ location = lm[1]; rest = rest.replace(lm[0], ''); }
@@ -3645,16 +3655,17 @@ function renderSheetList(){
         <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">${name}
           ${badge ? '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:var(--primary);color:#fff">使用中</span>' : ''}
         </div>
-        <div style="font-size:11px;color:var(--muted)">${n} 门课</div>
+        <div style="font-size:11px;color:var(--muted)">${n}</div>
       </div>
       ${actBtn}
     </div>`;
-  let html = mk('主课表', mainCourses.length, active === 'main', active === 'main' ? '' :
+  let html = mk('主课表', mainCourses.length + ' 门课', active === 'main', active === 'main' ? '' :
     `<button class="btn ghost" data-use="main" style="flex:0 0 auto;padding:6px 12px;font-size:12px">使用</button>`);
   altSheets.forEach((s, i)=>{
     const key = 'alt:' + i;
     const on = active === key;
-    html += mk(s.name || ('副课表' + (i+1)), (s.courses || []).length, on, `
+    const desc = (s.courses || []).length + ' 门课' + (s.term ? ' · 开学 ' + s.term : '');
+    html += mk(s.name || ('副课表' + (i+1)), desc, on, `
       ${on ? '' : `<button class="btn ghost" data-use="${key}" style="flex:0 0 auto;padding:6px 12px;font-size:12px">使用</button>`}
       <button class="btn ghost" data-rename="${i}" style="flex:0 0 auto;padding:6px 12px;font-size:12px">改名</button>
       <button class="btn ghost" data-del="${i}" style="flex:0 0 auto;padding:6px 12px;font-size:12px;color:#d33">删除</button>`);
@@ -3663,7 +3674,7 @@ function renderSheetList(){
   box.querySelectorAll('[data-use]').forEach(b=> b.onclick = ()=>{
     const which = b.getAttribute('data-use');
     switchSheet(which);
-    CUR_WK = clampWeek(CUR_WK);
+    CUR_WK = clampWeek(weekOf(new Date()));
     refresh(); renderTomorrow(); renderSheetList();
     toast('已切换到「' + curName() + '」');
   });
@@ -3683,7 +3694,7 @@ function renderSheetList(){
     altSheets.splice(i, 1);
     if(active === 'alt:' + i) switchSheet('main');
     save();
-    CUR_WK = clampWeek(CUR_WK);
+    CUR_WK = clampWeek(weekOf(new Date()));
     refresh(); renderTomorrow(); renderSheetList();
     toast('已删除副课表');
   });
@@ -3696,7 +3707,7 @@ document.getElementById('btnAddSheet').onclick = ()=>{
   document.getElementById('newSheetName').value = '';
   const idx = altSheets.length - 1;
   switchSheet('alt:' + idx);
-  CUR_WK = clampWeek(CUR_WK);
+  CUR_WK = clampWeek(weekOf(new Date()));
   refresh(); renderTomorrow(); renderSheetList();
   toast('已创建并切换到「' + nm + '」,可直接导入课表');
 };
@@ -3714,12 +3725,25 @@ document.getElementById('btnClose').onclick = ()=> modal.classList.remove('on');
 document.getElementById('btnParse').onclick = ()=>{
   const ta = document.getElementById('impText');
   ta.readOnly = false;
-  const added = parseText(ta.value);
+  let body = ta.value;
+  const termLine = body.match(/^#开学日期\s+(\d{4}-\d{2}-\d{2})\s*$/m);
+  if(termLine){
+    if(active === 'main'){
+      TERM_START = new Date(termLine[1] + 'T00:00:00');
+      localStorage.setItem('ms.term', termLine[1]);
+      toast('已更新主课表开学日期');
+    } else {
+      altSheets[+active.slice(4)].term = termLine[1];
+      toast('已设置该副课表开学日期');
+    }
+    body = body.replace(/^#开学日期\s+\d{4}-\d{2}-\d{2}\s*$/m, '');
+  }
+  const added = parseText(body);
   if(!added.length){ alert('没识别到课程,检查一下格式:\n周一 08:00-09:40 课程名 @地点 1-16周 理论'); return; }
   if(courses.length && !confirm(`将用 ${added.length} 门新课替换当前 ${courses.length} 门课,继续吗?`)) return;
-  courses = added; replaceCourses(added); modal.classList.remove('on'); refresh();
+  courses = added; replaceCourses(added); CUR_WK = clampWeek(weekOf(new Date())); modal.classList.remove('on'); refresh();
 };
-document.getElementById('btnSample').onclick = ()=>{ courses = SAMPLE; replaceCourses(SAMPLE); modal.classList.remove('on'); refresh(); };
+document.getElementById('btnSample').onclick = ()=>{ courses = SAMPLE; replaceCourses(SAMPLE); CUR_WK = clampWeek(weekOf(new Date())); modal.classList.remove('on'); refresh(); };
 /* 考试安排照片扫描(OCR) */
 let tessWorkerP = null;
 const TESS_SRCS = [
