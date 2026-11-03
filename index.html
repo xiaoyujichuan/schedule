@@ -754,6 +754,16 @@ textarea{min-height:120px;resize:vertical}
         <div class="hint" style="margin-top:6px">备份含课表、待办、复习进度、已刷记录、提醒与功能设置;换设备或清缓存前先导出</div>
       </div>
     </div>
+    <div class="c-row" style="align-items:flex-start"><span>并列课表</span>
+      <div style="flex:1">
+        <div id="sheetList" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="newSheetName" placeholder="副课表名称,如:同学课表" style="flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;font-family:inherit">
+          <button class="btn ghost" id="btnAddSheet" style="flex:0 0 auto">＋ 创建</button>
+        </div>
+        <div class="hint" style="margin-top:6px">可创建多个并列课表并自由切换使用;主课表永远保留,各课表数据互不影响</div>
+      </div>
+    </div>
     <div class="c-row" style="align-items:flex-start"><span>软件信息</span>
       <div style="flex:1;font-size:13px">
         <div><b>MedSchedule · 医学生智能课表</b></div>
@@ -1060,16 +1070,39 @@ const USER_TEXT = [
 const USER_COURSES = parseText(USER_TEXT).map(c => ({...c, content:''}));
 
 const DATA_VERSION = 'zzu-2026-2027-1b';   // 内置课表数据版本;升级后自动用新数据替换本地旧课表
-let courses;
+/* 并列课表:mainCourses=主课表(ms.courses),altSheets=副课表组(ms.altSheets)
+   courses 始终指向当前"使用中"的课表,所有渲染/编辑逻辑自动跟随 */
+let mainCourses;
 try{
   const saved = JSON.parse(localStorage.getItem('ms.courses') || 'null');
-  courses = (localStorage.getItem('ms.dataVersion') === DATA_VERSION && saved) ? saved : USER_COURSES;
-}catch(e){ courses = USER_COURSES; }
+  mainCourses = (localStorage.getItem('ms.dataVersion') === DATA_VERSION && saved) ? saved : USER_COURSES;
+}catch(e){ mainCourses = USER_COURSES; }
 if(localStorage.getItem('ms.dataVersion') !== DATA_VERSION){
   localStorage.setItem('ms.dataVersion', DATA_VERSION);
   localStorage.setItem('ms.courses', JSON.stringify(USER_COURSES));
 }
-const save = () => localStorage.setItem('ms.courses', JSON.stringify(courses));
+let altSheets = [];
+try{ const a = JSON.parse(localStorage.getItem('ms.altSheets') || 'null'); if(Array.isArray(a)) altSheets = a; }catch(e){}
+let active = 'main';
+try{ const a = localStorage.getItem('ms.activeSheet'); if(a && a.startsWith('alt:')){ const i = +a.slice(4); if(altSheets[i]) active = a; } }catch(e){}
+let courses = active === 'main' ? mainCourses : (altSheets[+active.slice(4)].courses || (altSheets[+active.slice(4)].courses = []));
+const curName = () => active === 'main' ? '主课表' : (altSheets[+active.slice(4)].name || '副课表');
+const save = () => {
+  if(active === 'main') localStorage.setItem('ms.courses', JSON.stringify(mainCourses));
+  else localStorage.setItem('ms.altSheets', JSON.stringify(altSheets));
+  localStorage.setItem('ms.activeSheet', active);
+};
+const replaceCourses = arr => {
+  courses = arr;
+  if(active === 'main') mainCourses = arr;
+  else if(altSheets[+active.slice(4)]) altSheets[+active.slice(4)].courses = arr;
+  save();
+};
+const switchSheet = which => {
+  active = which;
+  courses = which === 'main' ? mainCourses : altSheets[+which.slice(4)].courses;
+  localStorage.setItem('ms.activeSheet', active);
+};
 let reviewProg = JSON.parse(localStorage.getItem('ms.reviewProgress') || '{}');
 const saveReviewProg = () => localStorage.setItem('ms.reviewProgress', JSON.stringify(reviewProg));
 let reviewPhotos = JSON.parse(localStorage.getItem('ms.reviewPhotos') || '{}');
@@ -1417,7 +1450,7 @@ function renderWeek(wk){
   }
   document.getElementById('weekGrid').innerHTML = html;
   document.getElementById('subInfo').textContent =
-    `第 ${wk} 周 · 共 ${courses.length} 门课 · 开学首周 ${ymd(TERM_START)}`;
+    `第 ${wk} 周 · 共 ${courses.length} 门课 · 开学首周 ${ymd(TERM_START)} · 当前:${curName()}`;
   renderStats(wk); renderExamTip(wk);
 }
 
@@ -2024,7 +2057,7 @@ async function renderTomorrow(){
   document.getElementById('btnWipe').onclick = ()=>{
     if(!courses.length){ toast('课表本来就是空的,可以直接导入新课表'); return; }
     if(!confirm('确定删除全部课程?\n删除后课表为空,可导入新课表。')) return;
-    courses = []; save(); refresh(); renderTomorrow();
+    courses = []; replaceCourses([]); refresh(); renderTomorrow();
     toast('课表已清空,可以导入新课表了');
   };
   const btnRemindSet = document.getElementById('btnRemindSet');
@@ -3460,6 +3493,7 @@ document.getElementById('btnSettings').onclick = ()=>{
     const cb = document.getElementById('fg-' + k);
     if(cb) cb.checked = tabsCfg[k] !== false;
   });
+  renderSheetList();
   document.getElementById('settingsModal').classList.add('on');
 };
 let rmMin = 60;
@@ -3596,15 +3630,84 @@ document.getElementById('btnSaveSet').onclick = ()=>{
 document.getElementById('btnWipe2').onclick = ()=>{
   if(!courses.length){ toast('课表本来就是空的,可以直接导入新课表'); return; }
   if(!confirm('确定删除全部课程?\n删除后课表为空,可导入新课表。')) return;
-  courses = []; save(); refresh(); renderTomorrow();
+  courses = []; replaceCourses([]); save(); refresh(); renderTomorrow();
   document.getElementById('settingsModal').classList.remove('on');
   toast('课表已清空,可以导入新课表了');
+};
+
+/* ================= 并列课表管理 ================= */
+function renderSheetList(){
+  const box = document.getElementById('sheetList');
+  if(!box) return;
+  const mk = (name, n, badge, actBtn) => `
+    <div style="display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:12px;padding:8px 10px;background:#fafbff">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px">${name}
+          ${badge ? '<span style="font-size:10px;padding:1px 7px;border-radius:999px;background:var(--primary);color:#fff">使用中</span>' : ''}
+        </div>
+        <div style="font-size:11px;color:var(--muted)">${n} 门课</div>
+      </div>
+      ${actBtn}
+    </div>`;
+  let html = mk('主课表', mainCourses.length, active === 'main', active === 'main' ? '' :
+    `<button class="btn ghost" data-use="main" style="flex:0 0 auto;padding:6px 12px;font-size:12px">使用</button>`);
+  altSheets.forEach((s, i)=>{
+    const key = 'alt:' + i;
+    const on = active === key;
+    html += mk(s.name || ('副课表' + (i+1)), (s.courses || []).length, on, `
+      ${on ? '' : `<button class="btn ghost" data-use="${key}" style="flex:0 0 auto;padding:6px 12px;font-size:12px">使用</button>`}
+      <button class="btn ghost" data-rename="${i}" style="flex:0 0 auto;padding:6px 12px;font-size:12px">改名</button>
+      <button class="btn ghost" data-del="${i}" style="flex:0 0 auto;padding:6px 12px;font-size:12px;color:#d33">删除</button>`);
+  });
+  box.innerHTML = html;
+  box.querySelectorAll('[data-use]').forEach(b=> b.onclick = ()=>{
+    const which = b.getAttribute('data-use');
+    switchSheet(which);
+    CUR_WK = clampWeek(CUR_WK);
+    refresh(); renderTomorrow(); renderSheetList();
+    toast('已切换到「' + curName() + '」');
+  });
+  box.querySelectorAll('[data-rename]').forEach(b=> b.onclick = ()=>{
+    const i = +b.getAttribute('data-rename');
+    const nm = prompt('新名称:', altSheets[i].name || '副课表');
+    if(!nm || !nm.trim()) return;
+    altSheets[i].name = nm.trim();
+    save();
+    renderSheetList();
+    if(active === 'alt:' + i){ refresh(); }
+    toast('已重命名');
+  });
+  box.querySelectorAll('[data-del]').forEach(b=> b.onclick = ()=>{
+    const i = +b.getAttribute('data-del');
+    if(!confirm('确定删除副课表「' + (altSheets[i].name || '副课表') + '」?\n删除后不可恢复。')) return;
+    altSheets.splice(i, 1);
+    if(active === 'alt:' + i) switchSheet('main');
+    save();
+    CUR_WK = clampWeek(CUR_WK);
+    refresh(); renderTomorrow(); renderSheetList();
+    toast('已删除副课表');
+  });
+}
+document.getElementById('btnAddSheet').onclick = ()=>{
+  const nm = document.getElementById('newSheetName').value.trim();
+  if(!nm){ toast('请输入副课表名称'); return; }
+  altSheets.push({name: nm, courses: []});
+  save();
+  document.getElementById('newSheetName').value = '';
+  const idx = altSheets.length - 1;
+  switchSheet('alt:' + idx);
+  CUR_WK = clampWeek(CUR_WK);
+  refresh(); renderTomorrow(); renderSheetList();
+  toast('已创建并切换到「' + nm + '」,可直接导入课表');
 };
 
 const modal = document.getElementById('modal');
 document.getElementById('btnImport').onclick = ()=>{
   const ta = document.getElementById('impText');
-  if(!ta.dataset.filled){ ta.value = USER_TEXT; ta.dataset.filled = '1'; }
+  if(!ta.dataset.filled || ta.dataset.sheet !== active){
+    ta.value = courses.length ? exportText() : USER_TEXT;
+    ta.dataset.filled = '1'; ta.dataset.sheet = active;
+  }
   modal.classList.add('on');
 };
 document.getElementById('btnClose').onclick = ()=> modal.classList.remove('on');
@@ -3614,9 +3717,9 @@ document.getElementById('btnParse').onclick = ()=>{
   const added = parseText(ta.value);
   if(!added.length){ alert('没识别到课程,检查一下格式:\n周一 08:00-09:40 课程名 @地点 1-16周 理论'); return; }
   if(courses.length && !confirm(`将用 ${added.length} 门新课替换当前 ${courses.length} 门课,继续吗?`)) return;
-  courses = added; save(); modal.classList.remove('on'); refresh();
+  courses = added; replaceCourses(added); modal.classList.remove('on'); refresh();
 };
-document.getElementById('btnSample').onclick = ()=>{ courses = SAMPLE; save(); modal.classList.remove('on'); refresh(); };
+document.getElementById('btnSample').onclick = ()=>{ courses = SAMPLE; replaceCourses(SAMPLE); modal.classList.remove('on'); refresh(); };
 /* 考试安排照片扫描(OCR) */
 let tessWorkerP = null;
 const TESS_SRCS = [
@@ -3705,7 +3808,7 @@ document.getElementById('btnParseExam').onclick = ()=>{
 };
 document.getElementById('btnClear').onclick = ()=>{
   if(!confirm('确定清空所有课程?')) return;
-  courses = []; save(); modal.classList.remove('on'); refresh();
+  courses = []; replaceCourses([]); modal.classList.remove('on'); refresh();
 };
 
 CUR_WK = clampWeek(weekOf(new Date()));
